@@ -47,6 +47,7 @@ anthropic.claude-opus-4-6-v1
 anthropic.claude-opus-4-7
 anthropic.claude-opus-4-8
 anthropic.claude-opus-5
+anthropic.claude-opus-5-5
 anthropic.claude-sonnet-4-5-20250929-v1:0
 anthropic.claude-sonnet-4-6
 anthropic.claude-sonnet-5
@@ -95,7 +96,10 @@ anthropic/claude-opus-4:thinking:1024
 anthropic/claude-opus-4:thinking:32768
 anthropic/claude-opus-4:thinking:8192
 anthropic/claude-opus-5
+anthropic/claude-opus-5-5
 anthropic/claude-opus-5-fast
+anthropic/claude-opus-5.5
+anthropic/claude-opus-5.5-fast
 anthropic/claude-opus-latest
 anthropic/claude-sonnet-3.5
 anthropic/claude-sonnet-3.5-june
@@ -124,6 +128,7 @@ au.anthropic.claude-opus-4-6-v1
 au.anthropic.claude-opus-4-7
 au.anthropic.claude-opus-4-8
 au.anthropic.claude-opus-5
+au.anthropic.claude-opus-5-5
 au.anthropic.claude-sonnet-4-5-20250929-v1:0
 au.anthropic.claude-sonnet-4-6
 au.anthropic.claude-sonnet-5
@@ -246,6 +251,9 @@ claude-opus-4.7
 claude-opus-4.8
 claude-opus-4@20250514
 claude-opus-5
+claude-opus-5-5
+claude-opus-5-5@default
+claude-opus-5-5@eu
 claude-opus-5-fast
 claude-opus-5-thinking
 claude-opus-5@default
@@ -331,6 +339,7 @@ eu.anthropic.claude-opus-4-6-v1
 eu.anthropic.claude-opus-4-7
 eu.anthropic.claude-opus-4-8
 eu.anthropic.claude-opus-5
+eu.anthropic.claude-opus-5-5
 eu.anthropic.claude-sonnet-4-20250514-v1:0
 eu.anthropic.claude-sonnet-4-5-20250929-v1:0
 eu.anthropic.claude-sonnet-4-6
@@ -440,6 +449,7 @@ global.anthropic.claude-opus-4-6-v1
 global.anthropic.claude-opus-4-7
 global.anthropic.claude-opus-4-8
 global.anthropic.claude-opus-5
+global.anthropic.claude-opus-5-5
 global.anthropic.claude-sonnet-4-20250514-v1:0
 global.anthropic.claude-sonnet-4-5-20250929-v1:0
 global.anthropic.claude-sonnet-4-6
@@ -661,6 +671,7 @@ jp.anthropic.claude-haiku-4-5-20251001-v1:0
 jp.anthropic.claude-opus-4-7
 jp.anthropic.claude-opus-4-8
 jp.anthropic.claude-opus-5
+jp.anthropic.claude-opus-5-5
 jp.anthropic.claude-sonnet-4-5-20250929-v1:0
 jp.anthropic.claude-sonnet-4-6
 jp.anthropic.claude-sonnet-5
@@ -821,6 +832,10 @@ openai/gpt-5.6-terra-pro
 openai/gpt-6-astra
 openai/gpt-6-astra-fast
 openai/gpt-6-astra-pro
+openai/gpt-6-luna
+openai/gpt-6-luna-pro
+openai/gpt-6-sol
+openai/gpt-6-sol-pro
 openai/gpt-astra-latest
 openai/gpt-audio
 openai/gpt-audio-mini
@@ -894,6 +909,7 @@ us.anthropic.claude-opus-4-6-v1
 us.anthropic.claude-opus-4-7
 us.anthropic.claude-opus-4-8
 us.anthropic.claude-opus-5
+us.anthropic.claude-opus-5-5
 us.anthropic.claude-sonnet-4-20250514-v1:0
 us.anthropic.claude-sonnet-4-5-20250929-v1:0
 us.anthropic.claude-sonnet-4-6

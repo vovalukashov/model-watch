@@ -16,6 +16,8 @@ anthropic/claude-opus-4.7:batch
 anthropic/claude-opus-4.8
 anthropic/claude-opus-4.8:batch
 anthropic/claude-opus-5
+anthropic/claude-opus-5.5
+anthropic/claude-opus-5.5:batch
 anthropic/claude-opus-5:batch
 anthropic/claude-sonnet-4
 anthropic/claude-sonnet-4.5
@@ -138,6 +140,14 @@ openai/gpt-6-astra
 openai/gpt-6-astra-pro
 openai/gpt-6-astra-pro:batch
 openai/gpt-6-astra:batch
+openai/gpt-6-luna
+openai/gpt-6-luna-pro
+openai/gpt-6-luna-pro:batch
+openai/gpt-6-luna:batch
+openai/gpt-6-sol
+openai/gpt-6-sol-pro
+openai/gpt-6-sol-pro:batch
+openai/gpt-6-sol:batch
 openai/gpt-audio
 openai/gpt-audio-mini
 openai/gpt-chat-latest
