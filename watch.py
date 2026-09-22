@@ -36,6 +36,12 @@ TG_LIMIT = 3900  # лимит sendMessage — 4096 символов, остав�
 
 ENV_RE = re.compile(r"\$\{(\w+)\}")
 
+DETAIL_LIMIT = 6      # сколько добавленных id расписывать подробно
+DETAIL_BUDGET = 220   # символов на одну строку с деталями
+
+# поля, ради которых в каталог и лезут: цена, контекст, дата
+INTEREST_RE = re.compile(r"(?i)(cost|price|limit|context|window|tokens|created|release)")
+
 
 # ---------- helpers ---------------------------------------------------------
 
@@ -73,9 +79,10 @@ def walk_values(obj, key: str):
             yield from walk_values(item, key)
 
 
-def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str]]:
+def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     """
-    Возвращает (нормализованный текст снимка, отсортированный список id).
+    Возвращает (нормализованный текст снимка, отсортированный список id,
+    разобранный JSON или None для текстовых источников).
 
     Режимы извлечения (поле "extract"):
       regex     — все совпадения "pattern" в тексте;
@@ -112,7 +119,66 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str]]:
         found = [f for f in found if only_re.search(f)]
 
     ids = sorted(set(found))
-    return text, ids
+    return text, ids, parsed
+
+
+def walk_dicts(obj):
+    """Рекурсивно обходит все словари внутри разобранного JSON."""
+    if isinstance(obj, dict):
+        yield obj
+        for v in obj.values():
+            yield from walk_dicts(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            yield from walk_dicts(item)
+
+
+def find_entry(parsed, src: dict, model_id: str):
+    """Находит объект модели по её id. None, если источник текстовый или объекта нет."""
+    if not isinstance(parsed, (dict, list)):
+        return None
+    if src.get("extract") == "top_keys":
+        entry = parsed.get(model_id) if isinstance(parsed, dict) else None
+        return entry if isinstance(entry, dict) else None
+    key = src.get("key", "id")
+    for d in walk_dicts(parsed):
+        if str(d.get(key, "")) == model_id:
+            return d
+    return None
+
+
+def flatten(entry: dict, prefix: str = ""):
+    """Разворачивает вложенные словари в пары «a.b → значение»."""
+    for k, v in entry.items():
+        name = f"{prefix}{k}"
+        if isinstance(v, dict):
+            yield from flatten(v, f"{name}.")
+        elif isinstance(v, (str, int, float, bool)):
+            yield name, v
+
+
+def summarize(entry, budget: int = DETAIL_BUDGET) -> str:
+    """Оставляет из объекта модели только цену, контекст и даты."""
+    if not isinstance(entry, dict):
+        return ""
+    fields = [(k, v) for k, v in flatten(entry) if INTEREST_RE.search(k)]
+    # кэш-тарифы интересны реже базовых, поэтому уезжают в хвост и под обрезку
+    fields.sort(key=lambda kv: "cache" in kv[0].lower())
+    parts = [f"{k}={v}" for k, v in fields]
+    if not parts:
+        return ""
+    out = ", ".join(parts)
+    return out if len(out) <= budget else out[: budget - 1] + "…"
+
+
+def format_change(src: dict, added: list[str], removed: list[str], parsed) -> str:
+    """Блок сообщения по одному источнику: что добавилось (с деталями) и что исчезло."""
+    lines = [f"• {src['name']} ({src['url']})"]
+    for i, a in enumerate(added):
+        detail = summarize(find_entry(parsed, src, a)) if i < DETAIL_LIMIT else ""
+        lines.append(f"  + {a}" + (f"\n      {detail}" if detail else ""))
+    lines += [f"  − {r}" for r in removed]
+    return "\n".join(lines)
 
 
 def git(*args: str) -> str:
@@ -185,7 +251,7 @@ def main() -> int:
 
         try:
             raw = fetch(src["url"], headers)
-            text, ids = extract_ids(raw, src)
+            text, ids, parsed = extract_ids(raw, src)
         except (urllib.error.URLError, ValueError, json.JSONDecodeError, KeyError) as e:
             msg = f"[{name}] ошибка: {e}"
             print(msg, file=sys.stderr)
@@ -205,10 +271,7 @@ def main() -> int:
         if is_new:
             report.append(f"• {name}: первый снимок, {len(ids)} id")
         elif added or removed:
-            lines = [f"• {name} ({src['url']})"]
-            lines += [f"  + {a}" for a in added]
-            lines += [f"  − {r}" for r in removed]
-            report.append("\n".join(lines))
+            report.append(format_change(src, added, removed, parsed))
 
     if report:
         send_telegram("model-watch: изменения\n\n" + "\n\n".join(report))
