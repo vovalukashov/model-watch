@@ -1,0 +1,83 @@
+[
+  {
+    "name": "azure-foundry-playground",
+    "url": "https://ai.azure.com/modelcache/widgets/PlaygroundConfig.json",
+    "kind": "json",
+    "extract": "regex",
+    "pattern": "azureml://registries/[\\w\\-./]+",
+    "keep_full": true,
+    "_comment": "Тот самый файл со скриншота. Реестр моделей плейграунда Azure AI Foundry."
+  },
+  {
+    "name": "openrouter",
+    "url": "https://openrouter.ai/api/v1/models",
+    "kind": "json",
+    "extract": "key",
+    "key": "id",
+    "only": "^(openai|anthropic|google|x-ai|openrouter)/",
+    "keep_full": false,
+    "_comment": "Стелс-модели лабораторий выходят здесь под кодовыми именами вида openrouter/<codename>-alpha."
+  },
+  {
+    "name": "models-dev",
+    "url": "https://models.dev/api.json",
+    "kind": "json",
+    "extract": "key",
+    "key": "id",
+    "only": "(?i)(gpt|claude|gemini|grok|codex|^o[1-9])",
+    "keep_full": false,
+    "_comment": "Открытый каталог моделей и цен, который быстро обновляют мейнтейнеры OpenCode."
+  },
+  {
+    "name": "litellm-prices",
+    "url": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+    "kind": "json",
+    "extract": "top_keys",
+    "only": "(?i)(gpt|claude|gemini|grok|codex)",
+    "keep_full": false,
+    "_comment": "Цены и контексты для всех провайдеров; новые id часто добавляют в день релиза или чуть раньше."
+  },
+  {
+    "name": "openai-api",
+    "url": "https://api.openai.com/v1/models",
+    "kind": "json",
+    "extract": "key",
+    "key": "id",
+    "headers": { "Authorization": "Bearer ${OPENAI_API_KEY}" },
+    "keep_full": true,
+    "_comment": "Официальный список, виден с твоим ключом. Пропускается, если секрет OPENAI_API_KEY не задан."
+  },
+  {
+    "name": "anthropic-api",
+    "url": "https://api.anthropic.com/v1/models?limit=1000",
+    "kind": "json",
+    "extract": "key",
+    "key": "id",
+    "headers": {
+      "x-api-key": "${ANTHROPIC_API_KEY}",
+      "anthropic-version": "2023-06-01"
+    },
+    "keep_full": true,
+    "_comment": "Официальный список Anthropic. Пропускается, если секрет ANTHROPIC_API_KEY не задан."
+  },
+  {
+    "name": "feed-openai-codex",
+    "url": "https://github.com/openai/codex/commits/main.atom",
+    "kind": "text",
+    "extract": "regex",
+    "pattern": "(?i)\\b((?:gpt|codex|o[1-9])-[a-z0-9][\\w.\\-]*)",
+    "alert_removed": false,
+    "keep_full": false,
+    "_comment": "Последние коммиты клиента Codex — здесь всплывали gpt-6-astra и имена Sol/Terra/Luna."
+  },
+  {
+    "name": "feed-anthropic-claude-code",
+    "url": "https://github.com/anthropics/claude-code/commits/main.atom",
+    "kind": "text",
+    "extract": "regex",
+    "pattern": "\\b(claude-(?:opus|sonnet|haiku|fable|mythos|[a-z]+-eap)[\\w.\\-]*)",
+    "alert_removed": false,
+    "keep_full": false,
+    "_comment": "Коммиты Claude Code: ловим новые model id и строки *-eap."
+  }
+]
