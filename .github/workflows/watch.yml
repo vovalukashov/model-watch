@@ -1,0 +1,46 @@
+name: model-watch
+
+on:
+  schedule:
+    # каждые 10 минут (в публичном репозитории минуты Actions не тарифицируются);
+    # GitHub может задерживать cron на 5–15 минут в часы пик
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: model-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch, extract, diff, notify
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # REPORT_ERRORS: "1"   # раскомментируй, если хочешь получать в Telegram и ошибки скачивания
+        run: python watch.py
+
+      - name: Commit snapshot
+        run: |
+          git config user.name "model-watch"
+          git config user.email "model-watch@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
