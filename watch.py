@@ -12,6 +12,9 @@ model-watch — git-scraping для каталогов моделей.
   6. помнит в data/seen.tsv каждое имя, которое хоть раз видел, и отдельно сообщает,
      когда имя вернулось в каталоги и когда свежий слив из них убрали.
 
+python watch.py --check-chain — отдельная проверка, что цепочка tick.yml жива (её запускает
+запасное расписание в watch.yml); python watch.py --ai-selftest — самотест AI-сводки.
+
 Коммит и push делает GitHub Actions после скрипта (см. .github/workflows/watch.yml).
 Зависимостей нет — только стандартная библиотека Python 3.10+.
 AI-сводке нужен пакет anthropic (requirements.txt); без него приходит обычный отчёт.
@@ -52,6 +55,7 @@ REMOVED_LIMIT = 10    # removed ids listed per source before the rest collapse i
 SEEN_FILE = "seen.tsv"  # every model name any source ever listed; only grows, so novelty survives rolling feeds
 TIME_FORMAT = "%Y-%m-%dT%H:%MZ"
 PULLED_WITHIN = timedelta(days=7)  # a name this fresh that leaves every catalog was most likely a pulled leak
+CHAIN_STALE_AFTER = timedelta(minutes=30)  # tick.yml starts a check every ~10 minutes; three missed ones is a stop
 
 # the fields people open a catalog for: price, context window, dates
 INTEREST_RE = re.compile(r"(?i)(cost|price|limit|context|window|tokens|created|release)")
@@ -569,6 +573,52 @@ def run_ai_selftest(client=None) -> int:
     return 0
 
 
+def github_api(path: str) -> dict:
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"https://api.github.com{path}", headers=headers)
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def chain_warning(now: datetime, api=github_api) -> str | None:
+    """A warning when the tick chain has not started a check for CHAIN_STALE_AFTER; None while it runs or when
+    GitHub cannot tell us. Runs on the fallback schedule, which GitHub fires every few hours: a leak such as the
+    22.09 Azure entries, visible for about two hours, slips through such gaps."""
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if not repo:
+        return None
+    try:
+        data = api(f"/repos/{repo}/actions/workflows/watch.yml/runs?event=workflow_dispatch&per_page=1")
+        runs = data.get("workflow_runs") or []
+        last = datetime.strptime(runs[0]["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) if runs else None
+    except (urllib.error.URLError, ValueError, KeyError, TypeError, AttributeError) as e:
+        print(f"[watchdog] не удалось прочитать запуски workflow: {e}", file=sys.stderr)
+        return None
+    restart = "Перезапуск: Actions → tick → Run workflow."
+    if last is None:
+        return f"⚠️ model-watch: цепочка tick ещё ни разу не запускала проверку. {restart}"
+    if now - last <= CHAIN_STALE_AFTER:
+        return None
+    minutes = int((now - last).total_seconds() // 60)
+    return (f"⚠️ model-watch: цепочка tick встала. Последняя проверка по цепочке — {last:%d.%m %H:%M} UTC, "
+            f"{minutes} мин назад. Пока она стоит, проверки идут только по запасному расписанию GitHub, "
+            f"раз в несколько часов, и короткие сливы проскочат. {restart}")
+
+
+def run_chain_check() -> int:
+    """watch.yml calls this only when GitHub's fallback schedule, not the tick chain, started the run."""
+    warning = chain_warning(utc_now())
+    if warning:
+        print(warning)
+        send_telegram(warning)
+    else:
+        print("[watchdog] цепочка tick работает")
+    return 0
+
+
 def git(*args: str) -> str:
     return subprocess.run(
         ["git", *args], cwd=ROOT, capture_output=True, text=True, check=False
@@ -617,6 +667,8 @@ def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if "--ai-selftest" in args:
         return run_ai_selftest()
+    if "--check-chain" in args:
+        return run_chain_check()
 
     DATA.mkdir(exist_ok=True)
     sources = json.loads(SOURCES.read_text(encoding="utf-8"))

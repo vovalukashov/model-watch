@@ -544,6 +544,72 @@ class TestAiSelftest(unittest.TestCase):
         send.assert_not_called()
 
 
+class TestChainWarning(unittest.TestCase):
+    NOW = "2026-09-22T15:10Z"
+
+    def warn(self, runs=None, error=None, repo="vova/model-watch"):
+        calls = []
+
+        def api(path):
+            calls.append(path)
+            if error:
+                raise error
+            return {"workflow_runs": runs or []}
+
+        env = {"GITHUB_REPOSITORY": repo} if repo else {}
+        with mock.patch.dict("os.environ", env, clear=True), quiet():
+            return watch.chain_warning(at(self.NOW), api=api), calls
+
+    def test_quiet_while_the_chain_runs(self):
+        warning, calls = self.warn([{"created_at": "2026-09-22T15:01:40Z"}])
+        self.assertIsNone(warning)
+        self.assertEqual(calls, ["/repos/vova/model-watch/actions/workflows/watch.yml/runs?event=workflow_dispatch&per_page=1"])
+
+    def test_warns_when_the_chain_stopped(self):
+        warning, _ = self.warn([{"created_at": "2026-09-22T13:10:05Z"}])
+        self.assertTrue(warning.startswith("⚠️ model-watch: цепочка tick встала."))
+        self.assertIn("22.09 13:10 UTC, 119 мин назад", warning)
+        self.assertIn("Actions → tick → Run workflow", warning)
+
+    def test_warns_when_the_chain_never_ran(self):
+        warning, _ = self.warn([])
+        self.assertIn("ещё ни разу", warning)
+
+    def test_silent_when_github_cannot_tell(self):
+        warning, _ = self.warn(error=watch.urllib.error.URLError("timeout"))
+        self.assertIsNone(warning)
+        warning, _ = self.warn([{"created_at": "вчера"}])
+        self.assertIsNone(warning)
+
+    def test_skipped_outside_actions(self):
+        warning, calls = self.warn(repo=None)
+        self.assertIsNone(warning)
+        self.assertEqual(calls, [])
+
+    def test_github_api_sends_the_workflow_token(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"workflow_runs": []}'
+        with mock.patch.dict("os.environ", {"GITHUB_TOKEN": "t0k"}, clear=True), \
+                mock.patch.object(watch.urllib.request, "urlopen", return_value=response) as urlopen:
+            self.assertEqual(watch.github_api("/repos/x/y"), {"workflow_runs": []})
+        req = urlopen.call_args[0][0]
+        self.assertEqual(req.full_url, "https://api.github.com/repos/x/y")
+        self.assertEqual(req.get_header("Authorization"), "Bearer t0k")
+
+    def test_check_chain_flag_sends_the_warning(self):
+        with quiet(), mock.patch.object(watch, "chain_warning", return_value="⚠️ встала") as check, \
+                mock.patch.object(watch, "send_telegram") as send:
+            self.assertEqual(watch.main(["--check-chain"]), 0)
+        check.assert_called_once()
+        send.assert_called_once_with("⚠️ встала")
+
+    def test_check_chain_flag_stays_quiet_while_the_chain_runs(self):
+        with quiet(), mock.patch.object(watch, "chain_warning", return_value=None), \
+                mock.patch.object(watch, "send_telegram") as send:
+            self.assertEqual(watch.main(["--check-chain"]), 0)
+        send.assert_not_called()
+
+
 class TestMainEndToEnd(unittest.TestCase):
     """Runs main() against a throwaway git repo with file:// sources: the real fetch → diff → message path."""
 
@@ -610,6 +676,12 @@ class TestMainEndToEnd(unittest.TestCase):
         send, ai = self.run_main({"data": [{"id": "gpt-5"}]}, {"claude-opus-4-8": {}})
         send.assert_not_called()
         ai.assert_not_called()
+
+    def test_a_regular_check_leaves_the_chain_to_its_own_step(self):
+        env = {"GITHUB_EVENT_NAME": "schedule", "GITHUB_REPOSITORY": "vova/model-watch"}
+        with mock.patch.dict("os.environ", env), mock.patch.object(watch, "chain_warning") as check:
+            self.run_main({"data": [{"id": "gpt-5"}]}, {"claude-opus-4-8": {}})
+        check.assert_not_called()
 
 
 class TestLeakDay(unittest.TestCase):
