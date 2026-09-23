@@ -193,6 +193,98 @@ class TestLoadKnown(unittest.TestCase):
         self.assertEqual(watch.load_known(Path("/nonexistent/model-watch-data")), set())
 
 
+def at(stamp):
+    return watch.datetime.strptime(stamp, watch.TIME_FORMAT).replace(tzinfo=watch.timezone.utc)
+
+
+class TestSeenMemory(unittest.TestCase):
+    def test_missing_file_means_the_memory_has_not_started(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(watch.load_seen(Path(d)))
+
+    def test_round_trip(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True},
+                "codex-rs": {"first_seen": "", "catalog": False}}
+        with tempfile.TemporaryDirectory() as d:
+            watch.save_seen(Path(d), seen)
+            self.assertEqual(watch.load_seen(Path(d)), seen)
+
+    def test_new_names_get_the_time_and_catalog_flag(self):
+        seen = {}
+        snapshot = {"azure": {"gpt-6-sol"}, "feed": {"gpt-6-sol", "codex-rs"}}
+        watch.remember(seen, snapshot, {"azure"}, at("2026-09-22T13:10Z"))
+        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-22T13:10Z", "catalog": True})
+        self.assertEqual(seen["codex-rs"], {"first_seen": "2026-09-22T13:10Z", "catalog": False})
+
+    def test_names_from_a_newly_connected_source_have_no_time(self):
+        seen = {}
+        watch.remember(seen, {"anthropic-api": {"claude-opus-5"}}, {"anthropic-api"}, at("2026-09-22T13:10Z"),
+                       untimed_sources={"anthropic-api"})
+        self.assertEqual(seen["claude-opus-5"]["first_seen"], "")
+
+    def test_a_timed_source_wins_over_a_new_one(self):
+        seen = {}
+        watch.remember(seen, {"new": {"gpt-6-sol"}, "azure": {"gpt-6-sol"}}, {"new", "azure"},
+                       at("2026-09-22T13:10Z"), untimed_sources={"new"})
+        self.assertEqual(seen["gpt-6-sol"]["first_seen"], "2026-09-22T13:10Z")
+
+    def test_first_seen_is_never_overwritten_and_catalog_only_turns_on(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-21T08:00Z", "catalog": False}}
+        watch.remember(seen, {"azure": {"gpt-6-sol"}}, {"azure"}, at("2026-09-22T13:10Z"))
+        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-21T08:00Z", "catalog": True})
+        watch.remember(seen, {"feed": {"gpt-6-sol"}}, {"azure"}, at("2026-09-23T13:10Z"))
+        self.assertTrue(seen["gpt-6-sol"]["catalog"])
+
+
+class TestCatalogEvents(unittest.TestCase):
+    CATALOGS = {"azure", "openrouter"}
+    NOW = at("2026-09-22T18:59Z")
+
+    def test_a_name_back_in_a_catalog_has_returned(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
+        returned, pulled = watch.catalog_events(
+            {"azure": set(), "openrouter": set()}, {"azure": {"gpt-6-sol"}, "openrouter": {"gpt-6-sol"}},
+            self.CATALOGS, seen, self.NOW)
+        self.assertEqual(returned, [{"name": "gpt-6-sol", "sources": ["azure", "openrouter"]}])
+        self.assertEqual(pulled, [])
+
+    def test_a_name_only_a_commit_feed_had_shown_has_not_returned(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-21T08:00Z", "catalog": False}}
+        returned, _ = watch.catalog_events({"azure": set()}, {"azure": {"gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+        self.assertEqual(returned, [])
+
+    def test_a_newly_connected_source_brings_nothing_back(self):
+        seen = {"claude-opus-5": {"first_seen": "", "catalog": True}}
+        returned, _ = watch.catalog_events({"azure": set()}, {"azure": set(), "openrouter": {"claude-opus-5"}},
+                                           self.CATALOGS, seen, self.NOW, new_sources={"openrouter"})
+        self.assertEqual(returned, [])
+
+    def test_a_fresh_name_gone_from_every_catalog_was_pulled(self):
+        seen = {"gpt-6-astra-minor": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
+        _, pulled = watch.catalog_events({"azure": {"gpt-6-astra-minor"}}, {"azure": set()},
+                                         self.CATALOGS, seen, at("2026-09-22T15:27Z"))
+        self.assertEqual(pulled, [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure"]}])
+
+    def test_a_name_still_listed_somewhere_was_not_pulled(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
+        _, pulled = watch.catalog_events({"azure": {"gpt-6-sol"}, "openrouter": {"gpt-6-sol"}},
+                                         {"azure": set(), "openrouter": {"gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+        self.assertEqual(pulled, [])
+
+    def test_old_names_leaving_are_routine_cleanup(self):
+        seen = {"gpt-3-5-turbo": {"first_seen": "", "catalog": True},
+                "gpt-5-1-chat": {"first_seen": "2026-09-01T10:00Z", "catalog": True}}
+        _, pulled = watch.catalog_events({"azure": {"gpt-3-5-turbo", "gpt-5-1-chat"}}, {"azure": set()},
+                                         self.CATALOGS, seen, self.NOW)
+        self.assertEqual(pulled, [])
+
+    def test_commit_feeds_are_not_catalogs(self):
+        seen = {"codex-rs": {"first_seen": "2026-09-22T13:10Z", "catalog": False}}
+        returned, pulled = watch.catalog_events({"feed": {"codex-rs"}}, {"feed": set()},
+                                                self.CATALOGS, seen, self.NOW)
+        self.assertEqual((returned, pulled), ([], []))
+
+
 def change(name, added, removed=(), parsed=None, extract="key", is_new=False, novel=(), count=None):
     src = {"name": name, "url": f"https://example/{name}", "extract": extract}
     return {"src": src, "added": list(added), "removed": list(removed), "parsed": parsed,
@@ -395,6 +487,28 @@ class TestFormatMessage(unittest.TestCase):
         self.assertTrue(silent)
         self.assertIn("новых моделей нет", text.split("\n", 1)[0])
 
+    RETURNED = [{"name": "gpt-6-sol", "sources": ["azure-foundry-playground", "openrouter"]}]
+    PULLED = [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure-foundry-playground"]}]
+
+    def test_a_return_is_loud(self):
+        text, silent = watch.format_message(["• azure (u)\n  + gpt-6-sol"], [], None, returned=self.RETURNED)
+        self.assertFalse(silent)
+        self.assertIn("↩️", text.split("\n", 1)[0])
+        self.assertIn("↩️ вернулось: gpt-6-sol — снова в azure-foundry-playground, openrouter", text)
+
+    def test_a_pulled_leak_is_loud_and_says_when_it_appeared(self):
+        text, silent = watch.format_message(["• azure (u)\n  − gpt-6-astra-minor"], [], None, pulled=self.PULLED)
+        self.assertFalse(silent)
+        self.assertIn("🫥", text.split("\n", 1)[0])
+        self.assertIn("🫥 убрали: gpt-6-astra-minor — появилось 22.09 13:10 UTC, было в azure-foundry-playground", text)
+
+    def test_events_come_before_the_ai_summary_and_the_diff(self):
+        text, _ = watch.format_message(self.BLOCKS, ["gpt-6-sol"], "Похоже на релиз GPT-6.", pulled=self.PULLED)
+        self.assertTrue(text.startswith("model-watch: 🆕"))
+        self.assertLess(text.index("🫥 убрали"), text.index("Похоже на релиз"))
+        self.assertLess(text.index("Похоже на релиз"), text.index("— — —"))
+        self.assertLess(text.index("— — —"), text.index("• litellm-prices"))
+
 
 class TestSendTelegram(unittest.TestCase):
     def sent_payload(self, **kwargs):
@@ -496,6 +610,97 @@ class TestMainEndToEnd(unittest.TestCase):
         send, ai = self.run_main({"data": [{"id": "gpt-5"}]}, {"claude-opus-4-8": {}})
         send.assert_not_called()
         ai.assert_not_called()
+
+
+class TestLeakDay(unittest.TestCase):
+    """22.09.2026 replayed through main(): the Azure registry listed gpt-6-sol and gpt-6-astra-minor at 13:10 UTC,
+    dropped both by 15:27 and had gpt-6-sol back by 18:59; astra-minor never returned."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = root = Path(self.tmp.name)
+        (root / "data").mkdir()
+        self.azure = root / "azure.json"
+        self.feed = root / "feed.txt"
+        sources = [
+            {"name": "azure", "url": self.azure.as_uri(), "kind": "json", "extract": "key", "key": "id"},
+            {"name": "feed", "url": self.feed.as_uri(), "kind": "text", "extract": "regex",
+             "pattern": r"\b((?:gpt|codex)-[\w.\-]+)", "alert_removed": False},
+        ]
+        (root / "sources.json").write_text(json.dumps(sources), encoding="utf-8")
+        (root / "data" / "azure.ids.txt").write_text("gpt-5\n", encoding="utf-8")
+        (root / "data" / "feed.ids.txt").write_text("", encoding="utf-8")
+        self.git("init", "-q")
+        self.commit()
+        self.patches = [mock.patch.object(watch, "ROOT", root), mock.patch.object(watch, "DATA", root / "data"),
+                        mock.patch.object(watch, "SOURCES", root / "sources.json")]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def git(self, *args):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=self.root,
+                       check=False, capture_output=True)
+
+    def commit(self):  # what the workflow's "Commit snapshot" step does after every check
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "snapshot")
+
+    def check(self, stamp, azure_ids, feed_text=""):
+        self.azure.write_text(json.dumps({"data": [{"id": i} for i in azure_ids]}), encoding="utf-8")
+        self.feed.write_text(feed_text, encoding="utf-8")
+        with quiet(), mock.patch.object(watch, "utc_now", return_value=at(stamp)), \
+                mock.patch.object(watch, "send_telegram") as send, \
+                mock.patch.object(watch, "ai_summary", return_value="Похоже на слив GPT-6.") as ai:
+            watch.main([])
+        self.commit()
+        return send, ai
+
+    def test_leak_pulled_then_released(self):
+        send, ai = self.check("2026-09-22T13:10Z", ["gpt-5", "gpt-6-sol", "gpt-6-astra-minor"])
+        self.assertEqual({n["name"] for n in ai.call_args[0][0]["novel"]}, {"gpt-6-sol", "gpt-6-astra-minor"})
+        self.assertTrue(send.call_args[0][0].startswith("model-watch: 🆕"))
+
+        send, ai = self.check("2026-09-22T15:27Z", ["gpt-5"])
+        ai.assert_not_called()
+        text = send.call_args[0][0]
+        self.assertFalse(send.call_args[1]["silent"])
+        self.assertTrue(text.startswith("model-watch: 🫥"))
+        self.assertIn("🫥 убрали: gpt-6-astra-minor — появилось 22.09 13:10 UTC, было в azure", text)
+        self.assertIn("🫥 убрали: gpt-6-sol — появилось 22.09 13:10 UTC", text)
+
+        send, ai = self.check("2026-09-22T18:59Z", ["gpt-5", "gpt-6-sol"])
+        ai.assert_not_called()  # not novel any more: the memory kept it after Azure dropped it
+        text = send.call_args[0][0]
+        self.assertFalse(send.call_args[1]["silent"])
+        self.assertTrue(text.startswith("model-watch: ↩️"))
+        self.assertIn("↩️ вернулось: gpt-6-sol — снова в azure", text)
+        self.assertNotIn("🆕", text)
+
+        seen = watch.load_seen(self.root / "data")
+        self.assertEqual(seen["gpt-6-astra-minor"], {"first_seen": "2026-09-22T13:10Z", "catalog": True})
+        self.assertEqual(seen["gpt-5"], {"first_seen": "", "catalog": True})  # there before the memory started
+
+    def test_a_name_scrolling_back_into_a_commit_feed_is_not_new(self):
+        send, _ = self.check("2026-09-22T18:59Z", ["gpt-5"], "bump codex-rs")
+        self.assertTrue(send.call_args[0][0].startswith("model-watch: 🆕"))  # first sighting ever is news
+
+        send, _ = self.check("2026-09-23T00:20Z", ["gpt-5"], "docs only")
+        send.assert_not_called()  # leaving a rolling feed is not an event
+
+        send, ai = self.check("2026-09-23T12:04Z", ["gpt-5"], "bump codex-rs again")
+        ai.assert_not_called()
+        self.assertTrue(send.call_args[1]["silent"])
+        self.assertNotIn("🆕", send.call_args[0][0])
+
+    def test_first_check_starts_the_memory_quietly(self):
+        send, _ = self.check("2026-09-22T13:10Z", ["gpt-5"])
+        send.assert_not_called()
+        self.assertEqual(watch.load_seen(self.root / "data"), {"gpt-5": {"first_seen": "", "catalog": True}})
 
 
 if __name__ == "__main__":

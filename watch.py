@@ -8,7 +8,9 @@ model-watch — git-scraping для каталогов моделей.
   3. нормализует его и вытаскивает список model id;
   4. пишет снимок в data/<name>.json и data/<name>.ids.txt;
   5. сравнивает ids с последним коммитом (git diff) и шлёт
-     добавленные/удалённые id в Telegram (или в stdout, если токена нет).
+     добавленные/удалённые id в Telegram (или в stdout, если токена нет);
+  6. помнит в data/seen.tsv каждое имя, которое хоть раз видел, и отдельно сообщает,
+     когда имя вернулось в каталоги и когда свежий слив из них убрали.
 
 Коммит и push делает GitHub Actions после скрипта (см. .github/workflows/watch.yml).
 Зависимостей нет — только стандартная библиотека Python 3.10+.
@@ -25,6 +27,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
@@ -45,6 +48,10 @@ ENV_RE = re.compile(r"\$\{(\w+)\}")
 DETAIL_LIMIT = 6      # added ids per source that get a details line
 DETAIL_BUDGET = 220   # characters per details line
 REMOVED_LIMIT = 10    # removed ids listed per source before the rest collapse into a count
+
+SEEN_FILE = "seen.tsv"  # every model name any source ever listed; only grows, so novelty survives rolling feeds
+TIME_FORMAT = "%Y-%m-%dT%H:%MZ"
+PULLED_WITHIN = timedelta(days=7)  # a name this fresh that leaves every catalog was most likely a pulled leak
 
 # the fields people open a catalog for: price, context window, dates
 INTEREST_RE = re.compile(r"(?i)(cost|price|limit|context|window|tokens|created|release)")
@@ -324,6 +331,106 @@ def group_novel(changes: list[dict]) -> dict[str, list[dict]]:
     return groups
 
 
+# ---------- memory and catalog events ---------------------------------------
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def names_in(ids_path: Path) -> set[str]:
+    """Model names a source's ids file lists; empty when the source has never been fetched."""
+    if not ids_path.is_file():
+        return set()
+    return {base_name(line) for line in ids_path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def load_seen(data_dir: Path) -> dict[str, dict] | None:
+    """name → {"first_seen": "2026-09-22T13:10Z" or "", "catalog": bool}; None before the file exists.
+
+    first_seen is empty for names that were already there when the memory started or came with a newly connected
+    source: nobody knows when those appeared. catalog says whether any catalog (a source that is not a rolling
+    commit feed) has ever listed the name."""
+    path = data_dir / SEEN_FILE
+    if not path.is_file():
+        return None
+    seen: dict[str, dict] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        name, first_seen, catalog = (line.split("\t") + ["", ""])[:3]
+        seen[name] = {"first_seen": first_seen, "catalog": catalog == "1"}
+    return seen
+
+
+def save_seen(data_dir: Path, seen: dict[str, dict]) -> None:
+    lines = ["# name\tfirst_seen_utc\tin_catalog"]
+    lines += [f"{n}\t{r['first_seen']}\t{int(r['catalog'])}" for n, r in sorted(seen.items())]
+    (data_dir / SEEN_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def remember(seen: dict[str, dict], snapshot: dict[str, set[str]], catalogs: set[str], now: datetime,
+             untimed_sources: set[str] = frozenset()) -> None:
+    """Adds every name the snapshot lists. A name only a newly connected source brought gets no time: it was
+    there before we looked, not born now."""
+    stamp = now.strftime(TIME_FORMAT)
+    in_catalog: dict[str, bool] = {}
+    timed: dict[str, bool] = {}
+    for source, names in snapshot.items():
+        for n in names:
+            in_catalog[n] = in_catalog.get(n, False) or source in catalogs
+            timed[n] = timed.get(n, False) or source not in untimed_sources
+    for n in in_catalog:
+        record = seen.get(n)
+        if record is None:
+            seen[n] = {"first_seen": stamp if timed[n] else "", "catalog": in_catalog[n]}
+        elif in_catalog[n]:
+            record["catalog"] = True
+
+
+def union(snapshot: dict[str, set[str]], sources) -> set[str]:
+    out: set[str] = set()
+    for s in sources:
+        out |= snapshot.get(s, set())
+    return out
+
+
+def catalog_events(before: dict[str, set[str]], after: dict[str, set[str]], catalogs: set[str],
+                   seen: dict[str, dict], now: datetime, new_sources: set[str] = frozenset()):
+    """What moved in the catalogs as a whole, beyond one source's diff.
+
+    returned: a name no catalog listed a check ago, that some catalog had listed before that. On 22.09 the Azure
+    registry dropped gpt-6-sol two hours after the leak and brought it back at launch.
+    pulled: a name first seen within PULLED_WITHIN that no catalog lists any more: a leak someone cleaned up,
+    like gpt-6-astra-minor.
+
+    Rolling commit feeds are not catalogs: names scroll out of them all the time and mean nothing by leaving."""
+    was = union(before, catalogs)
+    now_listed = union(after, catalogs)
+    returned = []
+    for n in sorted(union(after, catalogs - new_sources) - was):
+        if seen.get(n, {}).get("catalog"):
+            returned.append({"name": n, "sources": sorted(s for s in catalogs if n in after.get(s, ()))})
+    pulled = []
+    for n in sorted(was - now_listed):
+        first_seen = seen.get(n, {}).get("first_seen", "")
+        if first_seen and now - datetime.strptime(first_seen, TIME_FORMAT).replace(tzinfo=timezone.utc) <= PULLED_WITHIN:
+            pulled.append({"name": n, "since": first_seen,
+                           "sources": sorted(s for s in catalogs if n in before.get(s, ()))})
+    return returned, pulled
+
+
+def short_time(stamp: str) -> str:
+    """2026-09-22T13:10Z → 22.09 13:10 UTC."""
+    return datetime.strptime(stamp, TIME_FORMAT).strftime("%d.%m %H:%M UTC")
+
+
+def format_events(returned: list[dict], pulled: list[dict]) -> str:
+    lines = [f"↩️ вернулось: {e['name']} — снова в {', '.join(e['sources'])}" for e in returned]
+    lines += [f"🫥 убрали: {e['name']} — появилось {short_time(e['since'])}, было в {', '.join(e['sources'])}"
+              for e in pulled]
+    return "\n".join(lines)
+
+
 # ---------- AI summary ------------------------------------------------------
 
 def build_ai_payload(groups: dict[str, list[dict]], changes: list[dict]) -> dict:
@@ -419,16 +526,26 @@ def ai_summary(payload: dict, client=None) -> str | None:
     return text or None
 
 
-def format_message(blocks: list[str], novel_names: list[str], ai_text: str | None) -> tuple[str, bool]:
-    """The Telegram text, and whether to send it silently: only novel names are worth a sound."""
+def format_message(blocks: list[str], novel_names: list[str], ai_text: str | None,
+                   returned: list[dict] = (), pulled: list[dict] = ()) -> tuple[str, bool]:
+    """The Telegram text, and whether to send it silently: novel names, returns and pulled leaks are worth a sound."""
     body = "\n\n".join(blocks)
     if novel_names and ai_text:
-        return f"model-watch: 🆕 признаки новых моделей\n\n{ai_text}\n\n— — —\n\n{body}", False
-    if novel_names:
+        head = "model-watch: 🆕 признаки новых моделей"
+    elif novel_names:
         shown = ", ".join(novel_names[:10])
         more = f" и ещё {len(novel_names) - 10}" if len(novel_names) > 10 else ""
-        return f"model-watch: 🆕 новые имена: {shown}{more}\n\n{body}", False
-    return f"model-watch: новых моделей нет\n\n{body}", True
+        head = f"model-watch: 🆕 новые имена: {shown}{more}"
+    elif returned:
+        head = "model-watch: ↩️ вернулось в каталоги"
+    elif pulled:
+        head = "model-watch: 🫥 убрали из каталогов"
+    else:
+        return f"model-watch: новых моделей нет\n\n{body}", True
+    parts = [head, format_events(list(returned), list(pulled))]
+    if novel_names and ai_text:
+        parts += [ai_text, "— — —"]
+    return "\n\n".join(p for p in parts + [body] if p), False
 
 
 def run_ai_selftest(client=None) -> int:
@@ -503,7 +620,17 @@ def main(argv: list[str] | None = None) -> int:
 
     DATA.mkdir(exist_ok=True)
     sources = json.loads(SOURCES.read_text(encoding="utf-8"))
-    known = load_known(DATA)  # must be read before the loop below overwrites the snapshots
+    now = utc_now()
+    active = [s["name"] for s in sources if not s.get("disabled")]
+    catalogs = {s["name"] for s in sources if not s.get("disabled") and s.get("alert_removed", True)}
+
+    # everything below up to the loop must be read before the loop overwrites the snapshots
+    before = {name: names_in(DATA / f"{name}.ids.txt") for name in active}
+    seen = load_seen(DATA)
+    if seen is None:  # the memory starts now: whatever the snapshots already list is known, of unknown age
+        seen = {}
+        remember(seen, before, catalogs, now, untimed_sources=set(active))
+    known = load_known(DATA) | set(seen)
 
     changes: list[dict] = []
     errors: list[str] = []
@@ -549,15 +676,23 @@ def main(argv: list[str] | None = None) -> int:
             changes.append({"src": src, "added": added, "removed": removed, "parsed": parsed, "is_new": is_new,
                             "novel": set() if is_new else novel_ids(added, known), "count": len(ids)})
 
+    after = {name: names_in(DATA / f"{name}.ids.txt") for name in active}
+    new_sources = {ch["src"]["name"] for ch in changes if ch["is_new"]}
+    returned, pulled = catalog_events(before, after, catalogs, seen, now, new_sources)
+    remember(seen, after, catalogs, now, untimed_sources=new_sources)
+    save_seen(DATA, seen)
+    if returned or pulled:
+        print(format_events(returned, pulled))
+
     report = [
         f"• {ch['src']['name']}: первый снимок, {ch['count']} id" if ch["is_new"]
         else format_change(ch["src"], ch["added"], ch["removed"], ch["parsed"], ch["novel"])
         for ch in changes
     ]
-    if report:
+    if report or returned or pulled:
         groups = group_novel(changes)
         ai_text = ai_summary(build_ai_payload(groups, changes)) if groups else None
-        text, silent = format_message(report, sorted(groups), ai_text)
+        text, silent = format_message(report, sorted(groups), ai_text, returned, pulled)
         send_telegram(text, silent=silent)
     else:
         print("изменений нет")
