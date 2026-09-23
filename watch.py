@@ -49,14 +49,18 @@ REMOVED_LIMIT = 10    # removed ids listed per source before the rest collapse i
 # the fields people open a catalog for: price, context window, dates
 INTEREST_RE = re.compile(r"(?i)(cost|price|limit|context|window|tokens|created|release)")
 
-AI_MODEL = "claude-opus-5"
-AI_EFFORT = "low"            # a short classification and summary; raise it if the verdicts get sloppy
-AI_MAX_TOKENS = 4096         # thinking plus a few lines of text; also caps the cost of one call
+# The model is reached through ai-proxy/ on Vercel: GitHub's OIDC token proves this workflow to the proxy,
+# and the proxy calls AI Gateway with Vercel's own OIDC token, so no API key exists anywhere.
+AI_MODEL = "xiaomi/mimo-v2.6-flash"  # the proxy allowlists it and falls back to anthropic/claude-haiku-4.5
+AI_AUDIENCE = "model-watch-ai"       # must match AUDIENCE in ai-proxy/lib/github-oidc.ts
+AI_MAX_TOKENS = 4096         # thinking plus a few lines of text; the proxy refuses anything above
 AI_TIMEOUT = 120             # seconds per attempt; the SDK retries 429 and 5xx twice on its own
-AI_BETAS = ["server-side-fallback-2026-07-01"]  # enables fallbacks="default": a declined request reruns on another model
 AI_NOVEL_LIMIT = 20          # novel names sent to the model per run
 AI_SEEN_IN_LIMIT = 6         # appearances listed per novel name
-AI_PRICE_PER_MTOK = {"claude-opus-5": (5.00, 25.00)}  # USD per million input/output tokens, list price as of 2026-06
+AI_PRICE_PER_MTOK = {        # USD per million input/output tokens, AI Gateway list price as of 2026-09-23
+    "xiaomi/mimo-v2.6-flash": (0.14, 0.28),
+    "anthropic/claude-haiku-4.5": (1.00, 5.00),
+}
 
 AI_SYSTEM_PROMPT = """\
 You write the alert text for model-watch, a bot that watches AI model catalogs and client source code for \
@@ -344,23 +348,52 @@ def build_ai_payload(groups: dict[str, list[dict]], changes: list[dict]) -> dict
     return {"novel": novel, "more_novel": max(0, len(ranked) - AI_NOVEL_LIMIT), "other_changes": other}
 
 
-def ai_summary(payload: dict, api_key: str | None, client=None) -> str | None:
-    """A short human-readable verdict from Claude, or None when the AI is off or anything goes wrong."""
+def github_oidc_token(audience: str) -> str | None:
+    """A GitHub Actions OIDC token for the audience; None outside Actions or without `id-token: write`."""
+    url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+    bearer = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    if not url or not bearer:
+        return None
+    sep = "&" if "?" in url else "?"
+    req = urllib.request.Request(
+        f"{url}{sep}audience={urllib.parse.quote(audience)}",
+        headers={"Authorization": f"bearer {bearer}", "User-Agent": USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8"))["value"]
+    except (urllib.error.URLError, ValueError, KeyError) as e:
+        print(f"[ai] could not get a GitHub OIDC token: {e}", file=sys.stderr)
+        return None
+
+
+def price_for(model: str) -> tuple[float, float] | None:
+    """List price for the model that answered; the gateway may name it with or without the provider prefix."""
+    if model in AI_PRICE_PER_MTOK:
+        return AI_PRICE_PER_MTOK[model]
+    return next((p for m, p in AI_PRICE_PER_MTOK.items() if m.endswith("/" + model)), None)
+
+
+def ai_summary(payload: dict, client=None) -> str | None:
+    """A short human-readable verdict from the model behind ai-proxy, or None when the AI is off or anything fails."""
     if client is None:
-        if not api_key:
+        base_url = os.environ.get("AI_PROXY_URL")
+        if not base_url:
             return None
         if anthropic is None:
             print("[ai] package 'anthropic' is not installed: sending the plain report", file=sys.stderr)
             return None
-        client = anthropic.Anthropic(api_key=api_key, timeout=AI_TIMEOUT)
+        token = github_oidc_token(AI_AUDIENCE)
+        if not token:
+            print("[ai] no GitHub OIDC token (the job needs `id-token: write`): sending the plain report",
+                  file=sys.stderr)
+            return None
+        client = anthropic.Anthropic(api_key=token, base_url=base_url, timeout=AI_TIMEOUT)
     content = "Changes found in the latest check:\n" + json.dumps(payload, ensure_ascii=False)
     try:
-        response = client.beta.messages.create(
+        response = client.messages.create(
             model=AI_MODEL,
             max_tokens=AI_MAX_TOKENS,
-            betas=AI_BETAS,
-            fallbacks="default",
-            output_config={"effort": AI_EFFORT},
             system=AI_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": content}],
         )
@@ -378,9 +411,9 @@ def ai_summary(payload: dict, api_key: str | None, client=None) -> str | None:
         print("[ai] hit max_tokens: the summary may be cut short", file=sys.stderr)
     usage = response.usage
     line = f"[ai] {response.model}: input={usage.input_tokens} output={usage.output_tokens} tokens"
-    price = AI_PRICE_PER_MTOK.get(response.model)
+    price = price_for(response.model)
     if price:
-        line += f", ≈ ${(usage.input_tokens * price[0] + usage.output_tokens * price[1]) / 1e6:.4f}"
+        line += f", ≈ ${(usage.input_tokens * price[0] + usage.output_tokens * price[1]) / 1e6:.6f}"
     print(line)
     text = "\n".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
     return text or None
@@ -398,7 +431,7 @@ def format_message(blocks: list[str], novel_names: list[str], ai_text: str | Non
     return f"model-watch: новых моделей нет\n\n{body}", True
 
 
-def run_ai_selftest(api_key: str | None, client=None) -> int:
+def run_ai_selftest(client=None) -> int:
     """Sends one AI summary of a recorded real run to Telegram, without fetching anything or touching data/."""
     known = {base_name(k) for k in SELFTEST_KNOWN}
     changes = []
@@ -407,9 +440,9 @@ def run_ai_selftest(api_key: str | None, client=None) -> int:
         changes.append({"src": src, "added": added, "removed": [], "parsed": None, "is_new": False,
                         "novel": novel_ids(added, known), "count": len(added)})
     groups = group_novel(changes)
-    ai_text = ai_summary(build_ai_payload(groups, changes), api_key, client)
+    ai_text = ai_summary(build_ai_payload(groups, changes), client)
     if ai_text is None:
-        print("[ai-selftest] no summary: check ANTHROPIC_API_KEY and the error above", file=sys.stderr)
+        print("[ai-selftest] no summary: check AI_PROXY_URL, `id-token: write` and the error above", file=sys.stderr)
         return 1
     blocks = [format_change(ch["src"], ch["added"], ch["removed"], None, ch["novel"]) for ch in changes]
     text, _ = format_message(blocks, sorted(groups), ai_text)
@@ -465,9 +498,8 @@ def send_telegram(text: str, silent: bool = False) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
     if "--ai-selftest" in args:
-        return run_ai_selftest(api_key)
+        return run_ai_selftest()
 
     DATA.mkdir(exist_ok=True)
     sources = json.loads(SOURCES.read_text(encoding="utf-8"))
@@ -524,7 +556,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     if report:
         groups = group_novel(changes)
-        ai_text = ai_summary(build_ai_payload(groups, changes), api_key) if groups else None
+        ai_text = ai_summary(build_ai_payload(groups, changes)) if groups else None
         text, silent = format_message(report, sorted(groups), ai_text)
         send_telegram(text, silent=silent)
     else:

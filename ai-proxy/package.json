@@ -1,0 +1,21 @@
+{
+  "name": "model-watch-ai-proxy",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vercel/oidc": "3.8.9",
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
+  }
+}

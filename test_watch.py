@@ -262,10 +262,10 @@ class FakeMessages:
 
 
 def fake_client(**kwargs):
-    return SimpleNamespace(beta=SimpleNamespace(messages=FakeMessages(**kwargs)))
+    return SimpleNamespace(messages=FakeMessages(**kwargs))
 
 
-def fake_response(text="Похоже на релиз GPT-6.", stop_reason="end_turn", model="claude-opus-5"):
+def fake_response(text="Похоже на релиз GPT-6.", stop_reason="end_turn", model="xiaomi/mimo-v2.6-flash"):
     return SimpleNamespace(
         content=[SimpleNamespace(type="thinking", thinking=""), SimpleNamespace(type="text", text=text)],
         stop_reason=stop_reason, stop_details=None, model=model,
@@ -273,23 +273,67 @@ def fake_response(text="Похоже на релиз GPT-6.", stop_reason="end_t
     )
 
 
+class TestGithubOidcToken(unittest.TestCase):
+    ENV = {"ACTIONS_ID_TOKEN_REQUEST_URL": "https://gh.example/token?api-version=2.0",
+           "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "runner-secret"}
+
+    def test_none_outside_github_actions(self):
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(watch.urllib.request, "urlopen") as urlopen:
+            self.assertIsNone(watch.github_oidc_token("model-watch-ai"))
+        urlopen.assert_not_called()
+
+    def test_requests_a_token_for_the_audience(self):
+        reply = mock.MagicMock()
+        reply.__enter__.return_value.read.return_value = b'{"value": "github-jwt"}'
+        with mock.patch.dict("os.environ", self.ENV, clear=True), \
+                mock.patch.object(watch.urllib.request, "urlopen", return_value=reply) as urlopen:
+            self.assertEqual(watch.github_oidc_token("model-watch-ai"), "github-jwt")
+        request = urlopen.call_args[0][0]
+        self.assertEqual(request.full_url, "https://gh.example/token?api-version=2.0&audience=model-watch-ai")
+        self.assertEqual(request.get_header("Authorization"), "bearer runner-secret")
+
+    def test_failure_is_no_token(self):
+        with mock.patch.dict("os.environ", self.ENV, clear=True), quiet(), \
+                mock.patch.object(watch.urllib.request, "urlopen", side_effect=watch.urllib.error.URLError("down")):
+            self.assertIsNone(watch.github_oidc_token("model-watch-ai"))
+
+
 class TestAiSummary(unittest.TestCase):
     PAYLOAD = {"novel": [{"name": "gpt-6-sol", "sources": ["litellm-prices"], "seen_in": []}], "more_novel": 0,
                "other_changes": []}
 
-    def test_off_without_key(self):
-        with quiet():
-            self.assertIsNone(watch.ai_summary(self.PAYLOAD, api_key=None))
+    def test_off_without_a_proxy(self):
+        with mock.patch.dict("os.environ", {}, clear=True), quiet():
+            self.assertIsNone(watch.ai_summary(self.PAYLOAD))
+
+    def test_off_without_a_github_token(self):
+        with mock.patch.dict("os.environ", {"AI_PROXY_URL": "https://proxy.example/api"}, clear=True), quiet():
+            self.assertIsNone(watch.ai_summary(self.PAYLOAD))
+
+    def test_talks_to_the_proxy_with_the_github_token(self):
+        made = []
+
+        def make_client(**kwargs):
+            made.append(kwargs)
+            return fake_client(response=fake_response())
+
+        sdk = SimpleNamespace(Anthropic=make_client, APIStatusError=RuntimeError)
+        with mock.patch.dict("os.environ", {"AI_PROXY_URL": "https://proxy.example/api"}, clear=True), \
+                mock.patch.object(watch, "github_oidc_token", return_value="github-jwt") as token, \
+                mock.patch.object(watch, "anthropic", sdk), quiet():
+            self.assertEqual(watch.ai_summary(self.PAYLOAD), "Похоже на релиз GPT-6.")
+        token.assert_called_once_with(watch.AI_AUDIENCE)
+        self.assertEqual(made[0]["api_key"], "github-jwt")
+        self.assertEqual(made[0]["base_url"], "https://proxy.example/api")
 
     def test_request_shape(self):
         client = fake_client(response=fake_response())
         with quiet():
-            watch.ai_summary(self.PAYLOAD, api_key="k", client=client)
-        call = client.beta.messages.calls[0]
-        self.assertEqual(call["model"], "claude-opus-5")
-        self.assertEqual(call["betas"], ["server-side-fallback-2026-07-01"])
-        self.assertEqual(call["fallbacks"], "default")
-        self.assertEqual(call["output_config"], {"effort": "low"})
+            watch.ai_summary(self.PAYLOAD, client=client)
+        call = client.messages.calls[0]
+        self.assertEqual(call["model"], "xiaomi/mimo-v2.6-flash")
+        for claude_only in ("betas", "fallbacks", "output_config"):
+            self.assertNotIn(claude_only, call)
         self.assertEqual(call["max_tokens"], watch.AI_MAX_TOKENS)
         self.assertEqual(call["system"], watch.AI_SYSTEM_PROMPT)
         self.assertEqual(call["messages"][0]["role"], "user")
@@ -299,30 +343,37 @@ class TestAiSummary(unittest.TestCase):
     def test_returns_text_blocks_only(self):
         client = fake_client(response=fake_response(text="  Похоже на релиз GPT-6.  "))
         with quiet():
-            self.assertEqual(watch.ai_summary(self.PAYLOAD, api_key="k", client=client), "Похоже на релиз GPT-6.")
+            self.assertEqual(watch.ai_summary(self.PAYLOAD, client=client), "Похоже на релиз GPT-6.")
 
     def test_refusal_falls_back_to_plain_report(self):
         client = fake_client(response=fake_response(text="", stop_reason="refusal"))
         with quiet():
-            self.assertIsNone(watch.ai_summary(self.PAYLOAD, api_key="k", client=client))
+            self.assertIsNone(watch.ai_summary(self.PAYLOAD, client=client))
 
     def test_api_error_never_raises(self):
         client = fake_client(error=RuntimeError("boom"))
         with quiet():
-            self.assertIsNone(watch.ai_summary(self.PAYLOAD, api_key="k", client=client))
+            self.assertIsNone(watch.ai_summary(self.PAYLOAD, client=client))
 
     def test_empty_text_is_no_summary(self):
         client = fake_client(response=fake_response(text="   "))
         with quiet():
-            self.assertIsNone(watch.ai_summary(self.PAYLOAD, api_key="k", client=client))
+            self.assertIsNone(watch.ai_summary(self.PAYLOAD, client=client))
 
     def test_logs_tokens_and_cost(self):
         client = fake_client(response=fake_response())
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            watch.ai_summary(self.PAYLOAD, api_key="k", client=client)
+            watch.ai_summary(self.PAYLOAD, client=client)
         self.assertIn("input=1200 output=300", out.getvalue())
-        self.assertIn("$0.0135", out.getvalue())  # 1200 * $5/M + 300 * $25/M
+        self.assertIn("$0.000252", out.getvalue())  # 1200 * $0.14/M + 300 * $0.28/M
+
+    def test_prices_a_bare_model_name_too(self):
+        client = fake_client(response=fake_response(model="mimo-v2.6-flash"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            watch.ai_summary(self.PAYLOAD, client=client)
+        self.assertIn("$0.000252", out.getvalue())
 
 
 class TestFormatMessage(unittest.TestCase):
@@ -363,9 +414,9 @@ class TestAiSelftest(unittest.TestCase):
     def test_sends_one_summary_of_the_recorded_example(self):
         client = fake_client(response=fake_response(text="Похоже на релиз GPT-6 и Claude Opus 5.5."))
         with quiet(), mock.patch.object(watch, "send_telegram") as send:
-            code = watch.run_ai_selftest(api_key="k", client=client)
+            code = watch.run_ai_selftest(client=client)
         self.assertEqual(code, 0)
-        payload = json.loads(client.beta.messages.calls[0]["messages"][0]["content"].split("\n", 1)[1])
+        payload = json.loads(client.messages.calls[0]["messages"][0]["content"].split("\n", 1)[1])
         names = {n["name"] for n in payload["novel"]}
         self.assertTrue({"gpt-6-sol", "gpt-6-luna", "claude-opus-5-5"} <= names)
         self.assertNotIn("gpt-5-4", names)  # known before the recorded run
@@ -374,8 +425,8 @@ class TestAiSelftest(unittest.TestCase):
         self.assertIn("Похоже на релиз GPT-6 и Claude Opus 5.5.", text)
 
     def test_fails_loudly_without_a_summary(self):
-        with quiet(), mock.patch.object(watch, "send_telegram") as send:
-            self.assertEqual(watch.run_ai_selftest(api_key=None), 1)
+        with mock.patch.dict("os.environ", {}, clear=True), quiet(), mock.patch.object(watch, "send_telegram") as send:
+            self.assertEqual(watch.run_ai_selftest(), 1)
         send.assert_not_called()
 
 
