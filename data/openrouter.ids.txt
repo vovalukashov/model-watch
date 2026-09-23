@@ -152,6 +152,7 @@ openai/gpt-audio
 openai/gpt-audio-mini
 openai/gpt-chat-latest
 openai/gpt-oss-120b
+openai/gpt-oss-120b:batch
 openai/gpt-oss-20b
 openai/gpt-oss-20b:batch
 openai/gpt-oss-safeguard-20b
