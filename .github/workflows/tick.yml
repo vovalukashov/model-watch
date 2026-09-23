@@ -28,12 +28,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Circuit breaker: without the wait timer (environment deleted or edited) ticks would follow
-          # each other in seconds. The previous tick normally finished about 10 minutes ago.
+          # each other in seconds. The previous tick normally finished about 10 minutes ago. A failed
+          # lookup must not end the chain, so it counts as "no previous tick".
           prev=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tick.yml --status completed \
-            --limit 1 --json updatedAt --jq '.[0].updatedAt // empty')
+            --limit 1 --json updatedAt --jq '.[0].updatedAt // empty' || true)
           if [ -n "$prev" ] && [ $(( $(date +%s) - $(date -d "$prev" +%s) )) -lt 300 ]; then
             echo "::error::previous tick finished under 5 minutes ago; the tick environment has lost its wait timer, not rescheduling"
             exit 1
           fi
-          gh workflow run watch.yml --repo "$GITHUB_REPOSITORY" --ref main
-          gh workflow run tick.yml --repo "$GITHUB_REPOSITORY" --ref main
+          dispatch() {  # one API hiccup must not break the chain
+            for attempt in 1 2 3; do
+              gh workflow run "$1" --repo "$GITHUB_REPOSITORY" --ref main && return 0
+              sleep 10
+            done
+            return 1
+          }
+          dispatch tick.yml   # keep the chain alive first
+          dispatch watch.yml || echo "::warning::could not start model-watch this round"
