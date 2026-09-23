@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   id-token: write   # lets the job prove itself to ai-proxy with a GitHub OIDC token
+  actions: read     # lets the fallback schedule see when the tick chain last started a check
 
 concurrency:
   group: model-watch
@@ -36,6 +37,16 @@ jobs:
 
       - name: Unit tests
         run: python -m unittest discover -v
+
+      - name: Check that the tick chain is alive
+        # Only the fallback schedule gets here: while tick.yml runs, it starts every check itself.
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python watch.py --check-chain
 
       - name: Fetch, extract, diff, notify
         env:
