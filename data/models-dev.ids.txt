@@ -189,6 +189,8 @@ azure/gpt-5.6-luna
 azure/gpt-5.6-sol
 azure/gpt-5.6-terra
 azure/gpt-6-astra
+azure/gpt-6-luna
+azure/gpt-6-sol
 azure/gpt-oss-120b
 bytedance/gpt-oss-120b
 cerebras/gpt-oss-120b
