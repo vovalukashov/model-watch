@@ -1428,6 +1428,8 @@ vertex_ai/claude-sonnet-4-6
 vertex_ai/claude-sonnet-4-6@default
 vertex_ai/claude-sonnet-5
 vertex_ai/claude-sonnet-5@default
+vertex_ai/gemini-2.0-flash
+vertex_ai/gemini-2.0-flash-lite
 vertex_ai/gemini-2.5-flash-image
 vertex_ai/gemini-2.5-flash-native-audio
 vertex_ai/gemini-2.5-flash-preview-tts
@@ -1456,6 +1458,7 @@ vertex_ai/gemini-3.8-flash
 vertex_ai/gemini-embedding-2
 vertex_ai/gemini-embedding-2-preview
 vertex_ai/gemini-omni-1.1-flash
+vertex_ai/gemini-omni-1.1-flash-preview
 vertex_ai/openai/gpt-oss-120b-maas
 vertex_ai/openai/gpt-oss-20b-maas
 vertex_ai/xai/grok-4.1-fast-non-reasoning
