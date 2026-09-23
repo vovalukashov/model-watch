@@ -811,6 +811,8 @@ gemini/gemini-3.5-transcribe-live
 gemini/gemini-3.6-flash
 gemini/gemini-3.7-flash
 gemini/gemini-3.8-flash
+gemini/gemini-3.8-flash-lite-tts
+gemini/gemini-3.8-flash-tts
 gemini/gemini-3.8-live
 gemini/gemini-3.8-live-extended-thinking
 gemini/gemini-embedding-001
