@@ -216,9 +216,9 @@ def at(stamp):
 
 
 class TestSeenMemory(unittest.TestCase):
-    def test_missing_file_means_the_memory_has_not_started(self):
+    def test_a_missing_file_is_an_empty_memory(self):
         with tempfile.TemporaryDirectory() as d:
-            self.assertIsNone(watch.load_seen(Path(d)))
+            self.assertEqual(watch.load_seen(Path(d)), {})
 
     def test_round_trip(self):
         seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"},
@@ -288,20 +288,51 @@ class TestCatalogEvents(unittest.TestCase):
 
     def test_a_fresh_name_gone_from_every_catalog_was_pulled(self):
         seen = {"gpt-6-astra-minor": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
-        _, pulled = watch.catalog_events({"azure": {"gpt-6-astra-minor"}}, {"azure": set()},
+        _, pulled = watch.catalog_events({"azure": {"gpt-5", "gpt-6-astra-minor"}}, {"azure": {"gpt-5"}},
                                          self.CATALOGS, seen, at("2026-09-22T15:27Z"))
-        self.assertEqual(pulled, [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure"]}])
+        self.assertEqual(pulled, [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure"],
+                                   "still": []}])
 
-    def test_a_name_still_listed_somewhere_was_not_pulled(self):
-        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
-        _, pulled = watch.catalog_events({"azure": {"gpt-6-sol"}, "openrouter": {"gpt-6-sol"}},
-                                         {"azure": set(), "openrouter": {"gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+    def test_a_fresh_name_leaving_one_catalog_was_pulled_from_it(self):
+        # litellm and models-dev copy a leaked name within hours and seldom drop it; waiting for every catalog to
+        # let go would miss the cleanup in the catalog that matters
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": ""}}
+        _, pulled = watch.catalog_events({"azure": {"gpt-5", "gpt-6-sol"}, "openrouter": {"gpt-6-sol"}},
+                                         {"azure": {"gpt-5"}, "openrouter": {"gpt-6-sol"}}, self.CATALOGS, seen,
+                                         self.NOW)
+        self.assertEqual(pulled, [{"name": "gpt-6-sol", "since": "2026-09-22T13:10Z", "sources": ["azure"],
+                                   "still": ["openrouter"]}])
+
+    def test_a_pulled_name_back_in_one_catalog_has_returned_while_another_kept_it(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"}}
+        returned, pulled = watch.catalog_events(
+            {"azure": {"gpt-5"}, "openrouter": {"gpt-6-sol"}},
+            {"azure": {"gpt-5", "gpt-6-sol"}, "openrouter": {"gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+        self.assertEqual(returned, [{"name": "gpt-6-sol", "sources": ["azure"]}])
         self.assertEqual(pulled, [])
+
+    def test_a_variant_of_a_name_still_listed_was_not_pulled(self):
+        # a catalog renaming its copy (openai-gpt-6-sol → gpt-6-sol) or dropping a serving mode is not a cleanup
+        seen = {"openai-gpt-6-sol": {"first_seen": "2026-09-22T21:59Z", "catalog": True, "pulled": ""},
+                "gpt-6-sol-fast": {"first_seen": "2026-09-22T21:59Z", "catalog": True, "pulled": ""}}
+        _, pulled = watch.catalog_events({"azure": {"gpt-5", "openai-gpt-6-sol", "gpt-6-sol-fast"}},
+                                         {"azure": {"gpt-5", "gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+        self.assertEqual(pulled, [])
+
+    def test_a_catalog_that_looks_broken_raises_no_pulls(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": ""}}
+        long_list = {f"model-{i:02}" for i in range(20)}
+        with quiet():
+            _, emptied = watch.catalog_events({"azure": {"gpt-5", "gpt-6-sol"}}, {"azure": set()},
+                                              self.CATALOGS, seen, self.NOW)
+            _, halved = watch.catalog_events({"azure": long_list | {"gpt-6-sol"}}, {"azure": set(sorted(long_list)[:9])},
+                                             self.CATALOGS, seen, self.NOW)
+        self.assertEqual((emptied, halved), ([], []))
 
     def test_old_names_leaving_are_routine_cleanup(self):
         seen = {"gpt-3-5-turbo": {"first_seen": "", "catalog": True},
                 "gpt-5-1-chat": {"first_seen": "2026-09-01T10:00Z", "catalog": True}}
-        _, pulled = watch.catalog_events({"azure": {"gpt-3-5-turbo", "gpt-5-1-chat"}}, {"azure": set()},
+        _, pulled = watch.catalog_events({"azure": {"gpt-5", "gpt-3-5-turbo", "gpt-5-1-chat"}}, {"azure": {"gpt-5"}},
                                          self.CATALOGS, seen, self.NOW)
         self.assertEqual(pulled, [])
 
@@ -310,6 +341,23 @@ class TestCatalogEvents(unittest.TestCase):
         returned, pulled = watch.catalog_events({"feed": {"codex-rs"}}, {"feed": set()},
                                                 self.CATALOGS, seen, self.NOW)
         self.assertEqual((returned, pulled), ([], []))
+
+
+class TestLooksBroken(unittest.TestCase):
+    TWENTY = {f"model-{i:02}" for i in range(20)}
+
+    def test_an_emptied_catalog_looks_broken(self):
+        self.assertTrue(watch.looks_broken({"gpt-5", "gpt-6-sol"}, set()))
+
+    def test_a_long_list_that_lost_more_than_half_looks_broken(self):
+        self.assertTrue(watch.looks_broken(self.TWENTY, set(sorted(self.TWENTY)[:9])))
+        self.assertFalse(watch.looks_broken(self.TWENTY, set(sorted(self.TWENTY)[:10])))
+
+    def test_a_short_list_may_really_lose_most_of_it(self):
+        self.assertFalse(watch.looks_broken({"gpt-5", "gpt-6-sol", "gpt-6-astra-minor"}, {"gpt-5"}))
+
+    def test_a_catalog_that_never_listed_anything_is_fine(self):
+        self.assertFalse(watch.looks_broken(set(), set()))
 
 
 def change(name, added, removed=(), parsed=None, extract="key", is_new=False, novel=(), count=None):
@@ -515,7 +563,8 @@ class TestFormatMessage(unittest.TestCase):
         self.assertIn("новых моделей нет", text.split("\n", 1)[0])
 
     RETURNED = [{"name": "gpt-6-sol", "sources": ["azure-foundry-playground", "openrouter"]}]
-    PULLED = [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure-foundry-playground"]}]
+    PULLED = [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure-foundry-playground"],
+               "still": []}]
 
     def test_a_return_is_loud(self):
         text, silent = watch.format_message(["• azure (u)\n  + gpt-6-sol"], [], None, returned=self.RETURNED)
@@ -527,7 +576,15 @@ class TestFormatMessage(unittest.TestCase):
         text, silent = watch.format_message(["• azure (u)\n  − gpt-6-astra-minor"], [], None, pulled=self.PULLED)
         self.assertFalse(silent)
         self.assertIn("🫥", text.split("\n", 1)[0])
-        self.assertIn("🫥 убрали: gpt-6-astra-minor — появилось 22.09 13:10 UTC, было в azure-foundry-playground", text)
+        self.assertIn("🫥 убрали: gpt-6-astra-minor из azure-foundry-playground — появилось 22.09 13:10 UTC, "
+                      "больше ни в одном каталоге", text)
+
+    def test_a_pull_says_which_catalogs_still_list_the_name(self):
+        pulled = [{"name": "gpt-6-sol", "since": "2026-09-22T18:59Z", "sources": ["azure-foundry-playground"],
+                   "still": ["litellm-prices", "models-dev"]}]
+        text, _ = watch.format_message(["• azure (u)\n  − gpt-6-sol"], [], None, pulled=pulled)
+        self.assertIn("🫥 убрали: gpt-6-sol из azure-foundry-playground — появилось 22.09 18:59 UTC, "
+                      "ещё есть в litellm-prices, models-dev", text)
 
     def test_events_come_before_the_ai_summary_and_the_diff(self):
         text, _ = watch.format_message(self.BLOCKS, ["gpt-6-sol"], "Похоже на релиз GPT-6.", pulled=self.PULLED)
@@ -712,8 +769,8 @@ class TestMainEndToEnd(unittest.TestCase):
 
 
 class TestLeakDay(unittest.TestCase):
-    """22.09.2026 replayed through main(): the Azure registry listed gpt-6-sol and gpt-6-astra-minor at 13:10 UTC,
-    dropped both by 15:27 and had gpt-6-sol back by 18:59; astra-minor never returned."""
+    """A leak day through main(), shaped like 22.09.2026: a catalog lists two unreleased names, drops both two hours
+    later and brings one of them back at launch; the other never returns."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -769,8 +826,9 @@ class TestLeakDay(unittest.TestCase):
         text = send.call_args[0][0]
         self.assertFalse(send.call_args[1]["silent"])
         self.assertTrue(text.startswith("model-watch: 🫥"))
-        self.assertIn("🫥 убрали: gpt-6-astra-minor — появилось 22.09 13:10 UTC, было в azure", text)
-        self.assertIn("🫥 убрали: gpt-6-sol — появилось 22.09 13:10 UTC", text)
+        self.assertIn("🫥 убрали: gpt-6-astra-minor из azure — появилось 22.09 13:10 UTC, больше ни в одном каталоге",
+                      text)
+        self.assertIn("🫥 убрали: gpt-6-sol из azure — появилось 22.09 13:10 UTC", text)
 
         send, ai = self.check("2026-09-22T18:59Z", ["gpt-5", "gpt-6-sol"])
         ai.assert_not_called()  # not novel any more: the memory kept it after Azure dropped it
@@ -806,6 +864,29 @@ class TestLeakDay(unittest.TestCase):
         ai.assert_not_called()
         self.assertTrue(send.call_args[1]["silent"])  # a revert, not a return
         self.assertNotIn("↩️", send.call_args[0][0])
+
+    def test_a_name_a_commit_feed_leaked_is_news_when_a_catalog_lists_it(self):
+        self.check("2026-09-22T18:59Z", ["gpt-5"], "route gpt-7 behind a flag")
+        self.check("2026-09-23T09:00Z", ["gpt-5"], "docs only")  # the feed scrolled past it
+        send, ai = self.check("2026-09-25T18:00Z", ["gpt-5", "gpt-7"], "docs only")
+        self.assertEqual([n["name"] for n in ai.call_args[0][0]["novel"]], ["gpt-7"])
+        self.assertFalse(send.call_args[1]["silent"])
+        self.assertTrue(send.call_args[0][0].startswith("model-watch: 🆕"))
+
+    def test_a_catalog_listing_is_news_while_the_feed_still_mentions_the_name(self):
+        self.check("2026-09-22T18:59Z", ["gpt-5"], "route gpt-7 behind a flag")
+        send, ai = self.check("2026-09-22T21:59Z", ["gpt-5", "gpt-7"], "route gpt-7 behind a flag")
+        self.assertEqual([n["name"] for n in ai.call_args[0][0]["novel"]], ["gpt-7"])
+        self.assertFalse(send.call_args[1]["silent"])
+
+    def test_names_the_memory_missed_are_kept_when_they_leave(self):
+        # seen.tsv was seeded before the last snapshot, which brought gemini-x; the next check drops it again
+        data = self.root / "data"
+        watch.save_seen(data, {"gpt-5": {"first_seen": "", "catalog": True, "pulled": ""}})
+        (data / "azure.ids.txt").write_text("gemini-x\ngpt-5\n", encoding="utf-8")
+        self.commit()
+        self.check("2026-09-23T17:00Z", ["gpt-5"])
+        self.assertEqual(watch.load_seen(data)["gemini-x"], {"first_seen": "", "catalog": True, "pulled": ""})
 
     def test_first_check_starts_the_memory_quietly(self):
         send, _ = self.check("2026-09-22T13:10Z", ["gpt-5"])

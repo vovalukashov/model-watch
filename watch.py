@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-model-watch — git-scraping для каталогов моделей.
+model-watch: git-scraping for model catalogs.
 
-Что делает за один прогон:
-  1. читает sources.json;
-  2. скачивает каждый источник (JSON или текст);
-  3. нормализует его и вытаскивает список model id;
-  4. пишет снимок в data/<name>.json и data/<name>.ids.txt;
-  5. сравнивает ids с последним коммитом (git diff) и шлёт
-     добавленные/удалённые id в Telegram (или в stdout, если токена нет);
-  6. помнит в data/seen.tsv каждое имя, которое хоть раз видел, и отдельно сообщает,
-     когда имя вернулось в каталоги и когда свежий слив из них убрали.
+One run:
+  1. reads sources.json;
+  2. downloads every source (JSON or text);
+  3. normalizes it and extracts the list of model ids;
+  4. writes the snapshot to data/<name>.json and data/<name>.ids.txt;
+  5. diffs the ids against the last commit (git diff) and sends the added and removed ids
+     to Telegram (or to stdout when there is no token);
+  6. keeps every name it has ever seen in data/seen.tsv and reports on its own when a fresh
+     leak leaves a catalog and when a pulled name comes back.
 
-python watch.py --check-chain — отдельная проверка, что цепочка tick.yml жива (её запускает
-запасное расписание в watch.yml); python watch.py --ai-selftest — самотест AI-сводки.
+python watch.py --check-chain checks that the tick.yml chain is alive (the fallback schedule
+in watch.yml runs it); python watch.py --ai-selftest tests the AI summary.
 
-Коммит и push делает GitHub Actions после скрипта (см. .github/workflows/watch.yml).
-Зависимостей нет — только стандартная библиотека Python 3.10+.
-AI-сводке нужен пакет anthropic (requirements.txt); без него приходит обычный отчёт.
+GitHub Actions commits and pushes after the script (see .github/workflows/watch.yml).
+No dependencies: the Python 3.10+ standard library only. The AI summary needs the anthropic
+package (requirements.txt); without it the plain report arrives.
 """
 
 from __future__ import annotations
@@ -54,7 +54,8 @@ REMOVED_LIMIT = 10    # removed ids listed per source before the rest collapse i
 
 SEEN_FILE = "seen.tsv"  # every model name any source ever listed; only grows, so novelty survives rolling feeds
 TIME_FORMAT = "%Y-%m-%dT%H:%MZ"
-PULLED_WITHIN = timedelta(days=7)  # a name this fresh that leaves every catalog was most likely a pulled leak
+PULLED_WITHIN = timedelta(days=7)  # a name this fresh that leaves a catalog was most likely a pulled leak
+BROKEN_LIST_MIN = 10  # a catalog this long that loses more than half of it in one check was fetched wrong
 CHAIN_STALE_AFTER = timedelta(minutes=30)  # tick.yml starts a check every ~10 minutes; three missed ones is a stop
 
 # the fields people open a catalog for: price, context window, dates
@@ -79,9 +80,10 @@ signs of new models from OpenAI, Anthropic, Google and xAI. One person reads you
 and decides whether to look closer.
 
 The user message is JSON describing one check:
-- novel: model names that appeared in this check and had never been listed by any watched source before. Each \
-entry has the sources that listed it, the raw ids there, and catalog details (prices, context window, release \
-date) when a catalog gave them. Names are normalised: dots became dashes, date suffixes and provider prefixes \
+- novel: model names that appeared in this check and had never been listed by any watched source before; a name \
+that only a commit feed had mentioned counts as novel the first time a catalog lists it. Each entry has the \
+sources that listed it, the raw ids there, and catalog details (prices, context window, release date) when a \
+catalog gave them. Names are normalised: dots became dashes, date suffixes and provider prefixes \
 were dropped, so claude-opus-5-5 is Claude Opus 5.5.
 - more_novel: how many further novel names were left out.
 - other_changes: per source, additions of already-known models and removals, with a few examples; \
@@ -351,17 +353,17 @@ def names_in(ids_path: Path) -> set[str]:
     return {base_name(line) for line in ids_path.read_text(encoding="utf-8").splitlines() if line.strip()}
 
 
-def load_seen(data_dir: Path) -> dict[str, dict] | None:
-    """name → {"first_seen": "2026-09-22T13:10Z" or "", "catalog": bool, "pulled": time or ""}; None before the
+def load_seen(data_dir: Path) -> dict[str, dict]:
+    """name → {"first_seen": "2026-09-22T13:10Z" or "", "catalog": bool, "pulled": time or ""}; empty before the
     file exists.
 
     first_seen is empty for names that were already there when the memory started or came with a newly connected
     source: nobody knows when those appeared. catalog says whether any catalog (a source that is not a rolling
-    commit feed) has ever listed the name. pulled is when the name, still fresh, left every catalog; it is cleared
-    once the name comes back."""
+    commit feed) has ever listed the name. pulled is when the name, still fresh, left a catalog; it is cleared
+    once a catalog lists it again."""
     path = data_dir / SEEN_FILE
     if not path.is_file():
-        return None
+        return {}
     seen: dict[str, dict] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip() or line.startswith("#"):
@@ -397,36 +399,50 @@ def remember(seen: dict[str, dict], snapshot: dict[str, set[str]], catalogs: set
             record["catalog"] = True
 
 
-def union(snapshot: dict[str, set[str]], sources) -> set[str]:
-    out: set[str] = set()
-    for s in sources:
-        out |= snapshot.get(s, set())
-    return out
+def looks_broken(was: set[str], listed: set[str]) -> bool:
+    """A catalog that came back empty, or lost more than half of a long list at once, was most likely fetched
+    wrong rather than cleaned up: the biggest real drop so far was litellm's cleanup on 22.09, 8% of its ids."""
+    if not was:
+        return False
+    return not listed or (len(was) >= BROKEN_LIST_MIN and len(listed) * 2 < len(was))
+
+
+def is_fresh(record: dict | None, now: datetime) -> bool:
+    first_seen = (record or {}).get("first_seen", "")
+    return bool(first_seen) and \
+        now - datetime.strptime(first_seen, TIME_FORMAT).replace(tzinfo=timezone.utc) <= PULLED_WITHIN
 
 
 def catalog_events(before: dict[str, set[str]], after: dict[str, set[str]], catalogs: set[str],
                    seen: dict[str, dict], now: datetime, new_sources: set[str] = frozenset()):
-    """What moved in the catalogs as a whole, beyond one source's diff.
+    """What moved in the catalogs beyond one source's diff, catalog by catalog.
 
-    returned: a name that was pulled (see below) and is back in a catalog. On 22.09 the Azure registry dropped
-    gpt-6-sol two hours after the leak and brought it back at launch. Old names that come back, say when litellm
-    reverts a cleanup, were never pulled and stay in the ordinary quiet diff.
-    pulled: a name first seen within PULLED_WITHIN that no catalog lists any more: a leak someone cleaned up,
-    like gpt-6-astra-minor.
+    pulled: a name first seen within PULLED_WITHIN that a catalog stopped listing: a leak someone cleaned up. It
+    counts while other catalogs keep the name, since litellm and models-dev copy a leaked name within hours and
+    seldom drop it. A catalog that still lists a variant (a renamed copy, the model without a serving mode) pulled
+    nothing, and one that looks broken (see looks_broken) raises no pulls at all.
+    returned: a pulled name that a catalog lists again. Old names that come back, say when litellm reverts a
+    cleanup, were never pulled and stay in the ordinary quiet diff.
 
     Rolling commit feeds are not catalogs: names scroll out of them all the time and mean nothing by leaving."""
-    was = union(before, catalogs)
-    now_listed = union(after, catalogs)
-    returned = []
-    for n in sorted(union(after, catalogs - new_sources) - was):
-        if seen.get(n, {}).get("pulled"):
-            returned.append({"name": n, "sources": sorted(s for s in catalogs if n in after.get(s, ()))})
-    pulled = []
-    for n in sorted(was - now_listed):
-        first_seen = seen.get(n, {}).get("first_seen", "")
-        if first_seen and now - datetime.strptime(first_seen, TIME_FORMAT).replace(tzinfo=timezone.utc) <= PULLED_WITHIN:
-            pulled.append({"name": n, "since": first_seen,
-                           "sources": sorted(s for s in catalogs if n in before.get(s, ()))})
+    back: dict[str, list[str]] = {}
+    gone: dict[str, list[str]] = {}
+    for c in sorted(catalogs):
+        was, listed = before.get(c, set()), after.get(c, set())
+        if c not in new_sources:
+            for n in listed - was:
+                if seen.get(n, {}).get("pulled"):
+                    back.setdefault(n, []).append(c)
+        if looks_broken(was, listed):
+            print(f"[{c}] lost {len(was - listed)} of {len(was)} names at once: likely a broken fetch, "
+                  "no pulled events from it", file=sys.stderr)
+            continue
+        for n in was - listed:
+            if is_fresh(seen.get(n), now) and not is_known(n, listed):
+                gone.setdefault(n, []).append(c)
+    returned = [{"name": n, "sources": s} for n, s in sorted(back.items())]
+    pulled = [{"name": n, "since": seen[n]["first_seen"], "sources": s,
+               "still": sorted(c for c in catalogs if n in after.get(c, ()))} for n, s in sorted(gone.items())]
     return returned, pulled
 
 
@@ -445,8 +461,9 @@ def short_time(stamp: str) -> str:
 
 def format_events(returned: list[dict], pulled: list[dict]) -> str:
     lines = [f"↩️ вернулось: {e['name']} — снова в {', '.join(e['sources'])}" for e in returned]
-    lines += [f"🫥 убрали: {e['name']} — появилось {short_time(e['since'])}, было в {', '.join(e['sources'])}"
-              for e in pulled]
+    for e in pulled:
+        rest = f"ещё есть в {', '.join(e['still'])}" if e["still"] else "больше ни в одном каталоге"
+        lines.append(f"🫥 убрали: {e['name']} из {', '.join(e['sources'])} — появилось {short_time(e['since'])}, {rest}")
     return "\n".join(lines)
 
 
@@ -610,7 +627,7 @@ def chain_warning(now: datetime, api=github_api) -> str | None:
         runs = data.get("workflow_runs") or []
         last = datetime.strptime(runs[0]["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) if runs else None
     except (urllib.error.URLError, ValueError, KeyError, TypeError, AttributeError) as e:
-        print(f"[watchdog] не удалось прочитать запуски workflow: {e}", file=sys.stderr)
+        print(f"[watchdog] could not read the workflow runs: {e}", file=sys.stderr)
         return None
     restart = "Перезапуск: Actions → tick → Run workflow."
     if last is None:
@@ -630,7 +647,7 @@ def run_chain_check() -> int:
         print(warning)
         send_telegram(warning)
     else:
-        print("[watchdog] цепочка tick работает")
+        print("[watchdog] the tick chain is running")
     return 0
 
 
@@ -694,10 +711,12 @@ def main(argv: list[str] | None = None) -> int:
     # everything below up to the loop must be read before the loop overwrites the snapshots
     before = {name: names_in(DATA / f"{name}.ids.txt") for name in active}
     seen = load_seen(DATA)
-    if seen is None:  # the memory starts now: whatever the snapshots already list is known, of unknown age
-        seen = {}
-        remember(seen, before, catalogs, now, untimed_sources=set(active))
+    # names the snapshots list but the memory lacks (all of them on its first run, the newest few when seen.tsv was
+    # seeded from an older history) are known, of unknown age
+    remember(seen, before, catalogs, now, untimed_sources=set(active))
     known = load_known(DATA) | set(seen)
+    # a catalog judges novelty by catalogs alone: a name a commit feed leaked is news the day a catalog lists it
+    catalog_known = {n for n, r in seen.items() if r["catalog"]}
 
     changes: list[dict] = []
     errors: list[str] = []
@@ -741,7 +760,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if is_new or added or removed:
             changes.append({"src": src, "added": added, "removed": removed, "parsed": parsed, "is_new": is_new,
-                            "novel": set() if is_new else novel_ids(added, known), "count": len(ids)})
+                            "novel": set() if is_new else novel_ids(added, catalog_known if name in catalogs else known),
+                            "count": len(ids)})
 
     after = {name: names_in(DATA / f"{name}.ids.txt") for name in active}
     new_sources = {ch["src"]["name"] for ch in changes if ch["is_new"]}
