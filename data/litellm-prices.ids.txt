@@ -1507,6 +1507,9 @@ xai/grok-4.6
 xai/grok-4.7
 xai/grok-build-0.1
 xai/grok-build-latest
+xai/grok-code-fast
+xai/grok-code-fast-1
+xai/grok-code-fast-1-0825
 xai/grok-imagine-image
 xai/grok-imagine-image-2.0
 xai/grok-imagine-image-2026-03-02
