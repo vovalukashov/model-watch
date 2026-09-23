@@ -6,6 +6,11 @@ on:
     # GitHub может задерживать cron на 5–15 минут в часы пик
     - cron: "*/10 * * * *"
   workflow_dispatch:
+    inputs:
+      ai_selftest:
+        description: "Send one AI summary of a recorded real run to Telegram (does not touch data/)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -23,6 +28,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Unit tests
         run: python -m unittest discover -v
@@ -34,7 +43,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # REPORT_ERRORS: "1"   # раскомментируй, если хочешь получать в Telegram и ошибки скачивания
-        run: python watch.py
+        run: python watch.py ${{ inputs.ai_selftest && '--ai-selftest' || '' }}
 
       - name: Commit snapshot
         run: |
