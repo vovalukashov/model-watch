@@ -106,6 +106,7 @@ azureml://registries/azureml-deepseek/models/deepseek-v3.2-speciale
 azureml://registries/azureml-deepseek/models/deepseek-v4-flash
 azureml://registries/azureml-deepseek/models/deepseek-v4-flash-0731
 azureml://registries/azureml-deepseek/models/deepseek-v4-pro
+azureml://registries/azureml-deepseek/models/deepseek-v4.1-flash
 azureml://registries/azureml-dev/models/cxrreportgen
 azureml://registries/azureml-dev/models/medimageparse
 azureml://registries/azureml-dev/models/phi-3.5-mini-instruct
