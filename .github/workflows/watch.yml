@@ -2,9 +2,9 @@ name: model-watch
 
 on:
   schedule:
-    # каждые 10 минут (в публичном репозитории минуты Actions не тарифицируются);
-    # GitHub может задерживать cron на 5–15 минут в часы пик
-    - cron: "*/10 * * * *"
+    # A fallback only: GitHub ran */10 just every 3-5 hours, so the 10-minute rhythm comes from tick.yml.
+    # The minutes avoid the top of the hour, GitHub's busiest time for schedules.
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
     inputs:
       ai_selftest:
