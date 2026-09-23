@@ -203,18 +203,19 @@ class TestSeenMemory(unittest.TestCase):
             self.assertIsNone(watch.load_seen(Path(d)))
 
     def test_round_trip(self):
-        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True},
-                "codex-rs": {"first_seen": "", "catalog": False}}
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"},
+                "codex-rs": {"first_seen": "", "catalog": False, "pulled": ""}}
         with tempfile.TemporaryDirectory() as d:
             watch.save_seen(Path(d), seen)
             self.assertEqual(watch.load_seen(Path(d)), seen)
+            self.assertNotIn("\t\n", (Path(d) / watch.SEEN_FILE).read_text(encoding="utf-8"))
 
     def test_new_names_get_the_time_and_catalog_flag(self):
         seen = {}
         snapshot = {"azure": {"gpt-6-sol"}, "feed": {"gpt-6-sol", "codex-rs"}}
         watch.remember(seen, snapshot, {"azure"}, at("2026-09-22T13:10Z"))
-        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-22T13:10Z", "catalog": True})
-        self.assertEqual(seen["codex-rs"], {"first_seen": "2026-09-22T13:10Z", "catalog": False})
+        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": ""})
+        self.assertEqual(seen["codex-rs"], {"first_seen": "2026-09-22T13:10Z", "catalog": False, "pulled": ""})
 
     def test_names_from_a_newly_connected_source_have_no_time(self):
         seen = {}
@@ -229,9 +230,9 @@ class TestSeenMemory(unittest.TestCase):
         self.assertEqual(seen["gpt-6-sol"]["first_seen"], "2026-09-22T13:10Z")
 
     def test_first_seen_is_never_overwritten_and_catalog_only_turns_on(self):
-        seen = {"gpt-6-sol": {"first_seen": "2026-09-21T08:00Z", "catalog": False}}
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-21T08:00Z", "catalog": False, "pulled": ""}}
         watch.remember(seen, {"azure": {"gpt-6-sol"}}, {"azure"}, at("2026-09-22T13:10Z"))
-        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-21T08:00Z", "catalog": True})
+        self.assertEqual(seen["gpt-6-sol"], {"first_seen": "2026-09-21T08:00Z", "catalog": True, "pulled": ""})
         watch.remember(seen, {"feed": {"gpt-6-sol"}}, {"azure"}, at("2026-09-23T13:10Z"))
         self.assertTrue(seen["gpt-6-sol"]["catalog"])
 
@@ -240,21 +241,29 @@ class TestCatalogEvents(unittest.TestCase):
     CATALOGS = {"azure", "openrouter"}
     NOW = at("2026-09-22T18:59Z")
 
-    def test_a_name_back_in_a_catalog_has_returned(self):
-        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True}}
+    def test_a_pulled_name_back_in_a_catalog_has_returned(self):
+        seen = {"gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"}}
         returned, pulled = watch.catalog_events(
             {"azure": set(), "openrouter": set()}, {"azure": {"gpt-6-sol"}, "openrouter": {"gpt-6-sol"}},
             self.CATALOGS, seen, self.NOW)
         self.assertEqual(returned, [{"name": "gpt-6-sol", "sources": ["azure", "openrouter"]}])
         self.assertEqual(pulled, [])
 
-    def test_a_name_only_a_commit_feed_had_shown_has_not_returned(self):
-        seen = {"gpt-6-sol": {"first_seen": "2026-09-21T08:00Z", "catalog": False}}
-        returned, _ = watch.catalog_events({"azure": set()}, {"azure": {"gpt-6-sol"}}, self.CATALOGS, seen, self.NOW)
+    def test_an_old_name_coming_back_is_not_an_event(self):
+        # litellm dropped grok-3-beta in a cleanup on 22.09; a revert would bring it back
+        seen = {"grok-3-beta": {"first_seen": "", "catalog": True, "pulled": ""}}
+        returned, _ = watch.catalog_events({"azure": set()}, {"azure": {"grok-3-beta"}}, self.CATALOGS, seen, self.NOW)
         self.assertEqual(returned, [])
 
+    def test_note_events_marks_pulled_names_and_clears_returned_ones(self):
+        seen = {"gpt-6-astra-minor": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": ""},
+                "gpt-6-sol": {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"}}
+        watch.note_events(seen, [{"name": "gpt-6-sol"}], [{"name": "gpt-6-astra-minor"}], self.NOW)
+        self.assertEqual(seen["gpt-6-astra-minor"]["pulled"], "2026-09-22T18:59Z")
+        self.assertEqual(seen["gpt-6-sol"]["pulled"], "")
+
     def test_a_newly_connected_source_brings_nothing_back(self):
-        seen = {"claude-opus-5": {"first_seen": "", "catalog": True}}
+        seen = {"claude-opus-5": {"first_seen": "", "catalog": True, "pulled": "2026-09-20T10:00Z"}}
         returned, _ = watch.catalog_events({"azure": set()}, {"azure": set(), "openrouter": {"claude-opus-5"}},
                                            self.CATALOGS, seen, self.NOW, new_sources={"openrouter"})
         self.assertEqual(returned, [])
@@ -754,8 +763,10 @@ class TestLeakDay(unittest.TestCase):
         self.assertNotIn("🆕", text)
 
         seen = watch.load_seen(self.root / "data")
-        self.assertEqual(seen["gpt-6-astra-minor"], {"first_seen": "2026-09-22T13:10Z", "catalog": True})
-        self.assertEqual(seen["gpt-5"], {"first_seen": "", "catalog": True})  # there before the memory started
+        self.assertEqual(seen["gpt-6-astra-minor"],  # still waiting to come back
+                         {"first_seen": "2026-09-22T13:10Z", "catalog": True, "pulled": "2026-09-22T15:27Z"})
+        self.assertEqual(seen["gpt-6-sol"]["pulled"], "")
+        self.assertEqual(seen["gpt-5"], {"first_seen": "", "catalog": True, "pulled": ""})  # there before the memory
 
     def test_a_name_scrolling_back_into_a_commit_feed_is_not_new(self):
         send, _ = self.check("2026-09-22T18:59Z", ["gpt-5"], "bump codex-rs")
@@ -769,10 +780,19 @@ class TestLeakDay(unittest.TestCase):
         self.assertTrue(send.call_args[1]["silent"])
         self.assertNotIn("🆕", send.call_args[0][0])
 
+    def test_a_model_that_leaves_after_a_week_and_comes_back_is_routine(self):
+        self.check("2026-09-22T13:10Z", ["gpt-5", "grok-3-beta"])
+        send, _ = self.check("2026-09-30T09:00Z", ["gpt-5"])
+        self.assertTrue(send.call_args[1]["silent"])  # a cleanup, not a pulled leak
+        send, ai = self.check("2026-10-01T09:00Z", ["gpt-5", "grok-3-beta"])
+        ai.assert_not_called()
+        self.assertTrue(send.call_args[1]["silent"])  # a revert, not a return
+        self.assertNotIn("↩️", send.call_args[0][0])
+
     def test_first_check_starts_the_memory_quietly(self):
         send, _ = self.check("2026-09-22T13:10Z", ["gpt-5"])
         send.assert_not_called()
-        self.assertEqual(watch.load_seen(self.root / "data"), {"gpt-5": {"first_seen": "", "catalog": True}})
+        self.assertEqual(watch.load_seen(self.root / "data"), {"gpt-5": {"first_seen": "", "catalog": True, "pulled": ""}})
 
 
 if __name__ == "__main__":

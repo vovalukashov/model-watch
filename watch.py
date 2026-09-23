@@ -349,11 +349,13 @@ def names_in(ids_path: Path) -> set[str]:
 
 
 def load_seen(data_dir: Path) -> dict[str, dict] | None:
-    """name → {"first_seen": "2026-09-22T13:10Z" or "", "catalog": bool}; None before the file exists.
+    """name → {"first_seen": "2026-09-22T13:10Z" or "", "catalog": bool, "pulled": time or ""}; None before the
+    file exists.
 
     first_seen is empty for names that were already there when the memory started or came with a newly connected
     source: nobody knows when those appeared. catalog says whether any catalog (a source that is not a rolling
-    commit feed) has ever listed the name."""
+    commit feed) has ever listed the name. pulled is when the name, still fresh, left every catalog; it is cleared
+    once the name comes back."""
     path = data_dir / SEEN_FILE
     if not path.is_file():
         return None
@@ -361,14 +363,15 @@ def load_seen(data_dir: Path) -> dict[str, dict] | None:
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip() or line.startswith("#"):
             continue
-        name, first_seen, catalog = (line.split("\t") + ["", ""])[:3]
-        seen[name] = {"first_seen": first_seen, "catalog": catalog == "1"}
+        name, first_seen, catalog, pulled = (line.split("\t") + ["", "", ""])[:4]
+        seen[name] = {"first_seen": first_seen, "catalog": catalog == "1", "pulled": pulled}
     return seen
 
 
 def save_seen(data_dir: Path, seen: dict[str, dict]) -> None:
-    lines = ["# name\tfirst_seen_utc\tin_catalog"]
-    lines += [f"{n}\t{r['first_seen']}\t{int(r['catalog'])}" for n, r in sorted(seen.items())]
+    lines = ["# name\tfirst_seen_utc\tin_catalog\tpulled_utc"]
+    lines += [f"{n}\t{r['first_seen']}\t{int(r['catalog'])}\t{r.get('pulled', '')}".rstrip("\t")  # no trailing tabs
+              for n, r in sorted(seen.items())]
     (data_dir / SEEN_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -386,7 +389,7 @@ def remember(seen: dict[str, dict], snapshot: dict[str, set[str]], catalogs: set
     for n in in_catalog:
         record = seen.get(n)
         if record is None:
-            seen[n] = {"first_seen": stamp if timed[n] else "", "catalog": in_catalog[n]}
+            seen[n] = {"first_seen": stamp if timed[n] else "", "catalog": in_catalog[n], "pulled": ""}
         elif in_catalog[n]:
             record["catalog"] = True
 
@@ -402,8 +405,9 @@ def catalog_events(before: dict[str, set[str]], after: dict[str, set[str]], cata
                    seen: dict[str, dict], now: datetime, new_sources: set[str] = frozenset()):
     """What moved in the catalogs as a whole, beyond one source's diff.
 
-    returned: a name no catalog listed a check ago, that some catalog had listed before that. On 22.09 the Azure
-    registry dropped gpt-6-sol two hours after the leak and brought it back at launch.
+    returned: a name that was pulled (see below) and is back in a catalog. On 22.09 the Azure registry dropped
+    gpt-6-sol two hours after the leak and brought it back at launch. Old names that come back, say when litellm
+    reverts a cleanup, were never pulled and stay in the ordinary quiet diff.
     pulled: a name first seen within PULLED_WITHIN that no catalog lists any more: a leak someone cleaned up,
     like gpt-6-astra-minor.
 
@@ -412,7 +416,7 @@ def catalog_events(before: dict[str, set[str]], after: dict[str, set[str]], cata
     now_listed = union(after, catalogs)
     returned = []
     for n in sorted(union(after, catalogs - new_sources) - was):
-        if seen.get(n, {}).get("catalog"):
+        if seen.get(n, {}).get("pulled"):
             returned.append({"name": n, "sources": sorted(s for s in catalogs if n in after.get(s, ()))})
     pulled = []
     for n in sorted(was - now_listed):
@@ -421,6 +425,14 @@ def catalog_events(before: dict[str, set[str]], after: dict[str, set[str]], cata
             pulled.append({"name": n, "since": first_seen,
                            "sources": sorted(s for s in catalogs if n in before.get(s, ()))})
     return returned, pulled
+
+
+def note_events(seen: dict[str, dict], returned: list[dict], pulled: list[dict], now: datetime) -> None:
+    """A pulled name waits in the memory for its return; a returned one stops waiting."""
+    for e in pulled:
+        seen[e["name"]]["pulled"] = now.strftime(TIME_FORMAT)
+    for e in returned:
+        seen[e["name"]]["pulled"] = ""
 
 
 def short_time(stamp: str) -> str:
@@ -731,6 +743,7 @@ def main(argv: list[str] | None = None) -> int:
     after = {name: names_in(DATA / f"{name}.ids.txt") for name in active}
     new_sources = {ch["src"]["name"] for ch in changes if ch["is_new"]}
     returned, pulled = catalog_events(before, after, catalogs, seen, now, new_sources)
+    note_events(seen, returned, pulled, now)
     remember(seen, after, catalogs, now, untimed_sources=new_sources)
     save_seen(DATA, seen)
     if returned or pulled:
