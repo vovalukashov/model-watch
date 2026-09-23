@@ -12,6 +12,7 @@ model-watch — git-scraping для каталогов моделей.
 
 Коммит и push делает GitHub Actions после скрипта (см. .github/workflows/watch.yml).
 Зависимостей нет — только стандартная библиотека Python 3.10+.
+AI-сводке нужен пакет anthropic (requirements.txt); без него приходит обычный отчёт.
 """
 
 from __future__ import annotations
@@ -26,6 +27,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+try:
+    import anthropic
+except ImportError:  # the AI summary is optional; the watcher itself runs on the standard library alone
+    anthropic = None
+
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 SOURCES = ROOT / "sources.json"
@@ -36,11 +42,69 @@ TG_LIMIT = 3900  # лимит sendMessage — 4096 символов, остав�
 
 ENV_RE = re.compile(r"\$\{(\w+)\}")
 
-DETAIL_LIMIT = 6      # сколько добавленных id расписывать подробно
-DETAIL_BUDGET = 220   # символов на одну строку с деталями
+DETAIL_LIMIT = 6      # added ids per source that get a details line
+DETAIL_BUDGET = 220   # characters per details line
+REMOVED_LIMIT = 10    # removed ids listed per source before the rest collapse into a count
 
-# поля, ради которых в каталог и лезут: цена, контекст, дата
+# the fields people open a catalog for: price, context window, dates
 INTEREST_RE = re.compile(r"(?i)(cost|price|limit|context|window|tokens|created|release)")
+
+AI_MODEL = "claude-opus-5"
+AI_EFFORT = "low"            # a short classification and summary; raise it if the verdicts get sloppy
+AI_MAX_TOKENS = 4096         # thinking plus a few lines of text; also caps the cost of one call
+AI_TIMEOUT = 120             # seconds per attempt; the SDK retries 429 and 5xx twice on its own
+AI_BETAS = ["server-side-fallback-2026-07-01"]  # enables fallbacks="default": a declined request reruns on another model
+AI_NOVEL_LIMIT = 20          # novel names sent to the model per run
+AI_SEEN_IN_LIMIT = 6         # appearances listed per novel name
+AI_PRICE_PER_MTOK = {"claude-opus-5": (5.00, 25.00)}  # USD per million input/output tokens, list price as of 2026-06
+
+AI_SYSTEM_PROMPT = """\
+You write the alert text for model-watch, a bot that watches AI model catalogs and client source code for \
+signs of new models from OpenAI, Anthropic, Google and xAI. One person reads your text in Telegram on a phone \
+and decides whether to look closer.
+
+The user message is JSON describing one check:
+- novel: model names that appeared in this check and had never been listed by any watched source before. Each \
+entry has the sources that listed it, the raw ids there, and catalog details (prices, context window, release \
+date) when a catalog gave them. Names are normalised: dots became dashes, date suffixes and provider prefixes \
+were dropped, so claude-opus-5-5 is Claude Opus 5.5.
+- more_novel: how many further novel names were left out.
+- other_changes: per source, additions of already-known models and removals, with a few examples; \
+first_snapshot means a source was just connected.
+
+What the sources are:
+- azure-foundry-playground: the model registry behind Microsoft's Azure AI Foundry playground. Names have shown \
+up here before launch; a new one usually means a deployment is being staged.
+- openrouter: OpenRouter's public model list. Labs test stealth models here under codenames such as \
+openrouter/<name>-alpha, and such a model can be called right away.
+- models-dev, litellm-prices: community catalogs with prices and context windows, usually updated on release \
+day or shortly before.
+- openai-api, anthropic-api: the official model lists visible to the owner's API key; a new id there is \
+available to the owner now.
+- feed-openai-codex, feed-anthropic-claude-code: names a regex found in recent commits of the Codex and Claude \
+Code clients. The earliest and noisiest signal; the regex also catches crate names, feature flags and branch names.
+
+Your knowledge of which models exist ends at your training cutoff, and this bot runs later than that. Take \
+novelty only from the novel list: never call a name new or old from memory. A name listed by several catalogs \
+in the same check is most likely being released publicly right now; a name seen in only one source, especially \
+the Azure registry or a commit feed, is an early sign that may not ship. When a name is not a model at all, \
+say so in a few words.
+
+Write in Russian, as plain text: no Markdown, no emoji, no headings. Open with a one-line verdict. Then give \
+each model family worth attention two or three sentences: what appeared, where, what it most likely means, and \
+what the reader can do now (for example, try it on OpenRouter). Cover noise and other_changes in at most one \
+closing line. Keep the whole text under 900 characters."""
+
+# the 2026-09-22 18:59 UTC run, trimmed: GPT-6 Sol/Luna and Claude Opus 5.5 land in every catalog at once,
+# next to a crate name from the Codex feed and a model that was already known
+SELFTEST_KNOWN = ["gpt-5.4", "gpt-5.4-mini"]
+SELFTEST_CHANGES = [
+    ("azure-foundry-playground", "regex", ["azureml://registries/azure-openai/models/gpt-6-luna",
+                                           "azureml://registries/azure-openai/models/gpt-6-sol"]),
+    ("litellm-prices", "top_keys", ["claude-opus-5-5", "gpt-6-luna", "gpt-6-sol"]),
+    ("openrouter", "key", ["anthropic/claude-opus-5.5", "openai/gpt-6-luna"]),
+    ("feed-openai-codex", "regex", ["codex-rs", "gpt-5.4", "gpt-6-sol"]),
+]
 
 
 # ---------- helpers ---------------------------------------------------------
@@ -123,7 +187,7 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
 
 
 def walk_dicts(obj):
-    """Рекурсивно обходит все словари внутри разобранного JSON."""
+    """Yields every dict nested anywhere in parsed JSON."""
     if isinstance(obj, dict):
         yield obj
         for v in obj.values():
@@ -134,7 +198,7 @@ def walk_dicts(obj):
 
 
 def find_entry(parsed, src: dict, model_id: str):
-    """Находит объект модели по её id. None, если источник текстовый или объекта нет."""
+    """The catalog object for a model id; None for text sources or when there is none."""
     if not isinstance(parsed, (dict, list)):
         return None
     if src.get("extract") == "top_keys":
@@ -148,7 +212,7 @@ def find_entry(parsed, src: dict, model_id: str):
 
 
 def flatten(entry: dict, prefix: str = ""):
-    """Разворачивает вложенные словари в пары «a.b → значение»."""
+    """Flattens nested dicts into ("a.b", value) pairs."""
     for k, v in entry.items():
         name = f"{prefix}{k}"
         if isinstance(v, dict):
@@ -158,11 +222,11 @@ def flatten(entry: dict, prefix: str = ""):
 
 
 def summarize(entry, budget: int = DETAIL_BUDGET) -> str:
-    """Оставляет из объекта модели только цену, контекст и даты."""
+    """Keeps only price, context window and dates from a model object."""
     if not isinstance(entry, dict):
         return ""
     fields = [(k, v) for k, v in flatten(entry) if INTEREST_RE.search(k)]
-    # кэш-тарифы интересны реже базовых, поэтому уезжают в хвост и под обрезку
+    # cache rates matter less than base prices, so they go last and are the first to be cut
     fields.sort(key=lambda kv: "cache" in kv[0].lower())
     parts = [f"{k}={v}" for k, v in fields]
     if not parts:
@@ -171,14 +235,188 @@ def summarize(entry, budget: int = DETAIL_BUDGET) -> str:
     return out if len(out) <= budget else out[: budget - 1] + "…"
 
 
-def format_change(src: dict, added: list[str], removed: list[str], parsed) -> str:
-    """Блок сообщения по одному источнику: что добавилось (с деталями) и что исчезло."""
+def format_change(src: dict, added: list[str], removed: list[str], parsed, novel=frozenset()) -> str:
+    """One source's block: added ids (novel first and marked, the first few with details), then removed ids."""
     lines = [f"• {src['name']} ({src['url']})"]
-    for i, a in enumerate(added):
+    ordered = [a for a in added if a in novel] + [a for a in added if a not in novel]
+    for i, a in enumerate(ordered):
         detail = summarize(find_entry(parsed, src, a)) if i < DETAIL_LIMIT else ""
-        lines.append(f"  + {a}" + (f"\n      {detail}" if detail else ""))
-    lines += [f"  − {r}" for r in removed]
+        mark = " 🆕" if a in novel else ""
+        lines.append(f"  + {a}{mark}" + (f"\n      {detail}" if detail else ""))
+    lines += [f"  − {r}" for r in removed[:REMOVED_LIMIT]]
+    if len(removed) > REMOVED_LIMIT:
+        lines.append(f"  … ещё {len(removed) - REMOVED_LIMIT} удалено")
     return "\n".join(lines)
+
+
+# ---------- novelty ---------------------------------------------------------
+
+REGION_PREFIX_RE = re.compile(r"^(?:us|eu|apac|au|jp|global|us-gov)\.")          # Bedrock cross-region ids
+VENDOR_PREFIX_RE = re.compile(r"^(?:anthropic|openai|google|xai|meta|amazon|mistral|cohere)\.")
+DATED_VERSION_RE = re.compile(r"(-\d{8})-v\d+$")                                # ...-20250219-v1
+DATE_SUFFIX_RE = re.compile(r"-(?:\d{8}|\d{4}-\d{2}-\d{2}|\d{4})$")              # -20250805, -2025-08-07, -0825
+
+
+def base_name(model_id: str) -> str:
+    """Reduces a catalog-specific id to a name comparable across catalogs: azure/gpt-5.4-pro-2026-03-05 → gpt-5-4-pro."""
+    s = model_id.strip().lower()
+    if "/models/" in s:                       # azureml://registries/<registry>/models/<name>[/versions/<n>]
+        s = s.split("/models/", 1)[1].split("/", 1)[0]
+    else:
+        s = s.rsplit("/", 1)[-1]              # openai/gpt-5, azure/us/gpt-5, bedrock/<region>/<plan>/anthropic.claude-...
+    s = s.split("@", 1)[0].split(":", 1)[0]   # @20251001, @eu, :batch, :free, -v1:0
+    s = REGION_PREFIX_RE.sub("", s)
+    s = VENDOR_PREFIX_RE.sub("", s)
+    s = s.replace(".", "-").replace("_", "-")
+    s = DATED_VERSION_RE.sub(r"\1", s)
+    return DATE_SUFFIX_RE.sub("", s)
+
+
+MODE_SUFFIXES = ("-fast", "-thinking")  # serving modes of a model, not new models
+
+
+def is_known(name: str, known: set[str]) -> bool:
+    """True if the name was seen before, or is a variant of a seen model: a provider-prefixed copy
+    (databricks-gemini-2-5-flash), a serving mode (gpt-6-sol-fast) or an alias without its version (grok-code-fast)."""
+    for suffix in MODE_SUFFIXES:
+        if name.endswith(suffix) and is_known(name[: -len(suffix)], known):
+            return True
+    if name in known:
+        return True
+    parts = name.split("-")
+    if any("-".join(parts[i:]) in known for i in range(1, len(parts) - 1)):
+        return True
+    prefix = name + "-"
+    return any(k.startswith(prefix) and k[len(prefix):].isdigit() for k in known)
+
+
+def load_known(data_dir: Path) -> set[str]:
+    """Every model name any source has listed so far; read before a run overwrites the snapshots."""
+    known: set[str] = set()
+    if data_dir.is_dir():
+        for path in data_dir.glob("*.ids.txt"):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            known.update(base_name(line) for line in lines if line.strip())
+    return known
+
+
+def novel_ids(added: list[str], known: set[str]) -> set[str]:
+    """Added ids whose model name no source had listed before."""
+    return {a for a in added if not is_known(base_name(a), known)}
+
+
+def group_novel(changes: list[dict]) -> dict[str, list[dict]]:
+    """Novel ids grouped by model name, with every source that listed the name in this run."""
+    groups: dict[str, list[dict]] = {}
+    for ch in changes:
+        for raw in ch["added"]:
+            if raw not in ch["novel"]:
+                continue
+            appearance = {"source": ch["src"]["name"], "id": raw}
+            detail = summarize(find_entry(ch["parsed"], ch["src"], raw))
+            if detail:
+                appearance["details"] = detail
+            groups.setdefault(base_name(raw), []).append(appearance)
+    return groups
+
+
+# ---------- AI summary ------------------------------------------------------
+
+def build_ai_payload(groups: dict[str, list[dict]], changes: list[dict]) -> dict:
+    """What the model reads: novel names with their sources, and a short account of everything else."""
+    ranked = sorted(groups.items(), key=lambda kv: (-len({a["source"] for a in kv[1]}), kv[0]))
+    novel = []
+    for name, seen in ranked[:AI_NOVEL_LIMIT]:
+        entry = {"name": name, "sources": sorted({a["source"] for a in seen}), "seen_in": seen[:AI_SEEN_IN_LIMIT]}
+        if len(seen) > AI_SEEN_IN_LIMIT:
+            entry["more_appearances"] = len(seen) - AI_SEEN_IN_LIMIT
+        novel.append(entry)
+    other = []
+    for ch in changes:
+        name = ch["src"]["name"]
+        if ch["is_new"]:
+            other.append({"source": name, "first_snapshot": True, "ids": ch["count"]})
+            continue
+        known_added = [a for a in ch["added"] if a not in ch["novel"]]
+        if known_added or ch["removed"]:
+            other.append({"source": name, "added_known": len(known_added), "removed": len(ch["removed"]),
+                          "examples_added": known_added[:3], "examples_removed": ch["removed"][:3]})
+    return {"novel": novel, "more_novel": max(0, len(ranked) - AI_NOVEL_LIMIT), "other_changes": other}
+
+
+def ai_summary(payload: dict, api_key: str | None, client=None) -> str | None:
+    """A short human-readable verdict from Claude, or None when the AI is off or anything goes wrong."""
+    if client is None:
+        if not api_key:
+            return None
+        if anthropic is None:
+            print("[ai] package 'anthropic' is not installed: sending the plain report", file=sys.stderr)
+            return None
+        client = anthropic.Anthropic(api_key=api_key, timeout=AI_TIMEOUT)
+    content = "Changes found in the latest check:\n" + json.dumps(payload, ensure_ascii=False)
+    try:
+        response = client.beta.messages.create(
+            model=AI_MODEL,
+            max_tokens=AI_MAX_TOKENS,
+            betas=AI_BETAS,
+            fallbacks="default",
+            output_config={"effort": AI_EFFORT},
+            system=AI_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": content}],
+        )
+    except Exception as e:  # the summary is an extra: no failure here may hold back the alert itself
+        where = ""
+        if anthropic is not None and isinstance(e, anthropic.APIStatusError):
+            where = f" (HTTP {e.status_code}, request {e.request_id})"
+        print(f"[ai] request failed{where}: {type(e).__name__}: {e}", file=sys.stderr)
+        return None
+    if response.stop_reason == "refusal":
+        category = getattr(response.stop_details, "category", None)
+        print(f"[ai] declined (category: {category}): sending the plain report", file=sys.stderr)
+        return None
+    if response.stop_reason == "max_tokens":
+        print("[ai] hit max_tokens: the summary may be cut short", file=sys.stderr)
+    usage = response.usage
+    line = f"[ai] {response.model}: input={usage.input_tokens} output={usage.output_tokens} tokens"
+    price = AI_PRICE_PER_MTOK.get(response.model)
+    if price:
+        line += f", ≈ ${(usage.input_tokens * price[0] + usage.output_tokens * price[1]) / 1e6:.4f}"
+    print(line)
+    text = "\n".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
+    return text or None
+
+
+def format_message(blocks: list[str], novel_names: list[str], ai_text: str | None) -> tuple[str, bool]:
+    """The Telegram text, and whether to send it silently: only novel names are worth a sound."""
+    body = "\n\n".join(blocks)
+    if novel_names and ai_text:
+        return f"model-watch: 🆕 признаки новых моделей\n\n{ai_text}\n\n— — —\n\n{body}", False
+    if novel_names:
+        shown = ", ".join(novel_names[:10])
+        more = f" и ещё {len(novel_names) - 10}" if len(novel_names) > 10 else ""
+        return f"model-watch: 🆕 новые имена: {shown}{more}\n\n{body}", False
+    return f"model-watch: новых моделей нет\n\n{body}", True
+
+
+def run_ai_selftest(api_key: str | None, client=None) -> int:
+    """Sends one AI summary of a recorded real run to Telegram, without fetching anything or touching data/."""
+    known = {base_name(k) for k in SELFTEST_KNOWN}
+    changes = []
+    for name, extract, added in SELFTEST_CHANGES:
+        src = {"name": name, "url": "запись прогона 22.09 18:59 UTC", "extract": extract}
+        changes.append({"src": src, "added": added, "removed": [], "parsed": None, "is_new": False,
+                        "novel": novel_ids(added, known), "count": len(added)})
+    groups = group_novel(changes)
+    ai_text = ai_summary(build_ai_payload(groups, changes), api_key, client)
+    if ai_text is None:
+        print("[ai-selftest] no summary: check ANTHROPIC_API_KEY and the error above", file=sys.stderr)
+        return 1
+    blocks = [format_change(ch["src"], ch["added"], ch["removed"], None, ch["novel"]) for ch in changes]
+    text, _ = format_message(blocks, sorted(groups), ai_text)
+    text = text.replace("model-watch:", "model-watch [самотест]:", 1)
+    print(text)
+    send_telegram(text)
+    return 0
 
 
 def git(*args: str) -> str:
@@ -199,7 +437,7 @@ def diff_ids(ids_path: Path) -> tuple[list[str], list[str], bool]:
     return added, removed, False
 
 
-def send_telegram(text: str) -> None:
+def send_telegram(text: str, silent: bool = False) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -207,9 +445,10 @@ def send_telegram(text: str) -> None:
         return
     if len(text) > TG_LIMIT:
         text = text[: TG_LIMIT - 20] + "\n…(обрезано)"
-    payload = json.dumps(
-        {"chat_id": chat_id, "text": text, "disable_web_page_preview": True}
-    ).encode("utf-8")
+    body = {"chat_id": chat_id, "text": text, "disable_web_page_preview": True}
+    if silent:
+        body["disable_notification"] = True  # arrives in the chat, but the phone stays quiet
+    payload = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/sendMessage",
         data=payload,
@@ -224,11 +463,17 @@ def send_telegram(text: str) -> None:
 
 # ---------- main ------------------------------------------------------------
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if "--ai-selftest" in args:
+        return run_ai_selftest(api_key)
+
     DATA.mkdir(exist_ok=True)
     sources = json.loads(SOURCES.read_text(encoding="utf-8"))
+    known = load_known(DATA)  # must be read before the loop below overwrites the snapshots
 
-    report: list[str] = []
+    changes: list[dict] = []
     errors: list[str] = []
 
     for src in sources:
@@ -268,13 +513,20 @@ def main() -> int:
             removed = []  # для "скользящих" лент (Atom-фиды коммитов) исчезновение id — не событие
         print(f"[{name}] ids={len(ids)} +{len(added)} -{len(removed)}" + (" (первый снимок)" if is_new else ""))
 
-        if is_new:
-            report.append(f"• {name}: первый снимок, {len(ids)} id")
-        elif added or removed:
-            report.append(format_change(src, added, removed, parsed))
+        if is_new or added or removed:
+            changes.append({"src": src, "added": added, "removed": removed, "parsed": parsed, "is_new": is_new,
+                            "novel": set() if is_new else novel_ids(added, known), "count": len(ids)})
 
+    report = [
+        f"• {ch['src']['name']}: первый снимок, {ch['count']} id" if ch["is_new"]
+        else format_change(ch["src"], ch["added"], ch["removed"], ch["parsed"], ch["novel"])
+        for ch in changes
+    ]
     if report:
-        send_telegram("model-watch: изменения\n\n" + "\n\n".join(report))
+        groups = group_novel(changes)
+        ai_text = ai_summary(build_ai_payload(groups, changes), api_key) if groups else None
+        text, silent = format_message(report, sorted(groups), ai_text)
+        send_telegram(text, silent=silent)
     else:
         print("изменений нет")
 
