@@ -1,0 +1,39 @@
+name: tick
+
+# GitHub ran this repository's */10 schedule only every 3-5 hours, so this workflow keeps the rhythm
+# itself: each tick waits 10 minutes on the `tick` environment's wait timer (no runner is held and the
+# wait is not billed), then starts model-watch and the next tick. A workflow_dispatch sent with
+# GITHUB_TOKEN is the one event GitHub lets a workflow use to start another run.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 * * * *"   # only restarts the chain if it ever breaks
+
+permissions:
+  actions: write
+
+concurrency:
+  group: tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    environment:
+      name: tick           # carries the 10-minute wait timer
+      deployment: false    # the wait still applies; no deployment records pile up
+    steps:
+      - name: Start model-watch and the next tick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Circuit breaker: without the wait timer (environment deleted or edited) ticks would follow
+          # each other in seconds. The previous tick normally finished about 10 minutes ago.
+          prev=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tick.yml --status completed \
+            --limit 1 --json updatedAt --jq '.[0].updatedAt // empty')
+          if [ -n "$prev" ] && [ $(( $(date +%s) - $(date -d "$prev" +%s) )) -lt 300 ]; then
+            echo "::error::previous tick finished under 5 minutes ago; the tick environment has lost its wait timer, not rescheduling"
+            exit 1
+          fi
+          gh workflow run watch.yml --repo "$GITHUB_REPOSITORY" --ref main
+          gh workflow run tick.yml --repo "$GITHUB_REPOSITORY" --ref main
