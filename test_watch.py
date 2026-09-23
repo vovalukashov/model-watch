@@ -43,6 +43,24 @@ class TestFindEntry(unittest.TestCase):
         self.assertIsNone(watch.find_entry(None, {"extract": "regex"}, "gpt-6-sol"))
 
 
+class TestCodexFeed(unittest.TestCase):
+    """The real feed-openai-codex entry from sources.json against lines like those the feed has carried."""
+
+    def test_keeps_model_names_and_drops_crates(self):
+        src = next(s for s in json.loads(watch.SOURCES.read_text(encoding="utf-8")) if s["name"] == "feed-openai-codex")
+        atom = ("<title>Bump codex-rs to 0.51; add codex-imagegen-request-id header</title>"
+                "<title>fix(codex-websocket-auth): retry</title><title>codex-minimal-sandbox cleanup</title>"
+                "<content>Default to GPT-5.5 for new sessions; gpt-5.5 stays. Add gpt-6-sol.</content>"
+                "<content>support gpt-image-2, o4-mini and codex-mini-latest; GPT-6</content>")
+        _, ids, _ = watch.extract_ids(atom.encode("utf-8"), src)
+        self.assertEqual(ids, ["codex-mini-latest", "gpt-5.5", "gpt-6", "gpt-6-sol", "gpt-image-2", "o4-mini"])
+
+    def test_lowercase_is_opt_in(self):
+        src = {"kind": "text", "extract": "regex", "pattern": r"(?i)\b(gpt-[\w.]+)"}
+        self.assertEqual(watch.extract_ids(b"GPT-5.5 gpt-5.5", src)[1], ["GPT-5.5", "gpt-5.5"])
+        self.assertEqual(watch.extract_ids(b"GPT-5.5 gpt-5.5", {**src, "lowercase": True})[1], ["gpt-5.5"])
+
+
 class TestSummarize(unittest.TestCase):
     def test_picks_price_and_context(self):
         entry = {"cost": {"input": 2.5, "output": 10}, "limit": {"context": 400000}, "name": "GPT-6 Sol"}

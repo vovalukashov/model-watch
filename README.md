@@ -52,6 +52,7 @@ Git-scraping для каталогов моделей: раз в 10 минут G
   "key": "id",                 // для extract=key
   "pattern": "…",              // для extract=regex; если есть группа — берётся группа 1
   "only": "(?i)gpt|claude",    // необязательный фильтр по извлечённым id
+  "lowercase": true,           // привести id к нижнему регистру (GPT-5.5 и gpt-5.5 — одно имя)
   "headers": { "Authorization": "Bearer ${SOME_SECRET}" },
   "keep_full": true,           // хранить ли полный нормализованный снимок в data/<name>.json
   "alert_removed": true        // false для «скользящих» лент вроде Atom-фидов коммитов

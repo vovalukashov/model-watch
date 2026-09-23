@@ -192,6 +192,9 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     else:
         raise ValueError(f"неизвестный extract: {mode}")
 
+    if src.get("lowercase"):  # commit messages write GPT-5.5 and gpt-5.5 for the same model
+        found = [f.lower() for f in found]
+
     only = src.get("only")
     if only:
         only_re = re.compile(only)

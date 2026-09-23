@@ -65,7 +65,8 @@
     "url": "https://github.com/openai/codex/commits/main.atom",
     "kind": "text",
     "extract": "regex",
-    "pattern": "(?i)\\b((?:gpt|codex|o[1-9])-[a-z0-9][\\w.\\-]*)",
+    "pattern": "(?i)\\b((?:gpt-[a-z0-9]|o[1-9]-[a-z0-9]|codex-(?:mini\\b|max\\b|\\d))(?:[\\w.\\-]*\\w)?)",
+    "lowercase": true,
     "alert_removed": false,
     "keep_full": false,
     "_comment": "Последние коммиты клиента Codex — здесь всплывали gpt-6-astra и имена Sol/Terra/Luna."
