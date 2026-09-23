@@ -1086,6 +1086,8 @@ oci/xai.grok-4.20-multi-agent
 oci/xai.grok-code-fast-1
 ollama/gpt-oss:120b-cloud
 ollama/gpt-oss:20b-cloud
+openai.gpt-6-luna
+openai.gpt-6-sol
 openai.gpt-oss-120b-1:0
 openai.gpt-oss-20b-1:0
 openai.gpt-oss-safeguard-120b
