@@ -1258,6 +1258,7 @@ openrouter/openai/gpt-audio
 openrouter/openai/gpt-audio-mini
 openrouter/openai/gpt-chat-latest
 openrouter/openai/gpt-oss-120b
+openrouter/openai/gpt-oss-120b:batch
 openrouter/openai/gpt-oss-20b
 openrouter/openai/gpt-oss-20b:batch
 openrouter/openai/gpt-oss-safeguard-20b
@@ -1364,6 +1365,7 @@ standard/1536-x-1024/gpt-image-1.5-2025-12-16
 tensormesh/openai/gpt-oss-120b
 tensormesh/openai/gpt-oss-20b
 together_ai/openai/gpt-oss-120b
+together_ai/openai/gpt-oss-20b
 us-gov.anthropic.claude-fable-5-1
 us-gov.anthropic.claude-opus-4-8
 us-gov.anthropic.claude-opus-5
