@@ -336,6 +336,8 @@ duo-chat-gpt-5-6-terra
 duo-chat-gpt-5-codex
 duo-chat-gpt-5-mini
 duo-chat-gpt-6-astra
+duo-chat-gpt-6-luna
+duo-chat-gpt-6-sol
 eu.anthropic.claude-fable-5
 eu.anthropic.claude-haiku-4-5-20251001-v1:0
 eu.anthropic.claude-opus-4-5-20251101-v1:0
@@ -752,6 +754,8 @@ openai.gpt-5.6-luna
 openai.gpt-5.6-sol
 openai.gpt-5.6-terra
 openai.gpt-6-astra
+openai.gpt-6-luna
+openai.gpt-6-sol
 openai.gpt-oss-120b
 openai.gpt-oss-120b-1:0
 openai.gpt-oss-20b
