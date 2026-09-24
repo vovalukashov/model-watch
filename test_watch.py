@@ -546,35 +546,35 @@ class TestAiSummary(unittest.TestCase):
 class TestFormatMessage(unittest.TestCase):
     BLOCKS = ["• litellm-prices (u)\n  + gpt-6-sol 🆕"]
 
-    def test_novel_with_summary_is_loud_and_leads_with_it(self):
-        text, silent = watch.format_message(self.BLOCKS, ["gpt-6-sol"], "Похоже на релиз GPT-6.")
-        self.assertFalse(silent)
+    def test_novel_with_summary_is_news_and_leads_with_it(self):
+        text, news = watch.format_message(self.BLOCKS, ["gpt-6-sol"], "Похоже на релиз GPT-6.")
+        self.assertTrue(news)
         self.assertTrue(text.startswith("model-watch: 🆕"))
         self.assertLess(text.index("Похоже на релиз"), text.index("• litellm-prices"))
 
     def test_novel_without_summary_names_the_models(self):
-        text, silent = watch.format_message(self.BLOCKS, ["gpt-6-luna", "gpt-6-sol"], None)
-        self.assertFalse(silent)
+        text, news = watch.format_message(self.BLOCKS, ["gpt-6-luna", "gpt-6-sol"], None)
+        self.assertTrue(news)
         self.assertIn("gpt-6-luna, gpt-6-sol", text.split("\n", 1)[0])
 
-    def test_nothing_novel_is_silent(self):
-        text, silent = watch.format_message(["• litellm-prices (u)\n  + azure/gpt-5"], [], None)
-        self.assertTrue(silent)
+    def test_nothing_novel_is_not_news(self):
+        text, news = watch.format_message(["• litellm-prices (u)\n  + azure/gpt-5"], [], None)
+        self.assertFalse(news)
         self.assertIn("новых моделей нет", text.split("\n", 1)[0])
 
     RETURNED = [{"name": "gpt-6-sol", "sources": ["azure-foundry-playground", "openrouter"]}]
     PULLED = [{"name": "gpt-6-astra-minor", "since": "2026-09-22T13:10Z", "sources": ["azure-foundry-playground"],
                "still": []}]
 
-    def test_a_return_is_loud(self):
-        text, silent = watch.format_message(["• azure (u)\n  + gpt-6-sol"], [], None, returned=self.RETURNED)
-        self.assertFalse(silent)
+    def test_a_return_is_news(self):
+        text, news = watch.format_message(["• azure (u)\n  + gpt-6-sol"], [], None, returned=self.RETURNED)
+        self.assertTrue(news)
         self.assertIn("↩️", text.split("\n", 1)[0])
         self.assertIn("↩️ вернулось: gpt-6-sol — снова в azure-foundry-playground, openrouter", text)
 
-    def test_a_pulled_leak_is_loud_and_says_when_it_appeared(self):
-        text, silent = watch.format_message(["• azure (u)\n  − gpt-6-astra-minor"], [], None, pulled=self.PULLED)
-        self.assertFalse(silent)
+    def test_a_pulled_leak_is_news_and_says_when_it_appeared(self):
+        text, news = watch.format_message(["• azure (u)\n  − gpt-6-astra-minor"], [], None, pulled=self.PULLED)
+        self.assertTrue(news)
         self.assertIn("🫥", text.split("\n", 1)[0])
         self.assertIn("🫥 убрали: gpt-6-astra-minor из azure-foundry-playground — появилось 22.09 13:10 UTC, "
                       "больше ни в одном каталоге", text)
@@ -595,17 +595,14 @@ class TestFormatMessage(unittest.TestCase):
 
 
 class TestSendTelegram(unittest.TestCase):
-    def sent_payload(self, **kwargs):
+    def test_every_message_rings(self):
+        # only news reaches Telegram now, so nothing is sent without a sound
         with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "1"}), \
                 mock.patch.object(watch.urllib.request, "urlopen") as urlopen:
-            watch.send_telegram("hello", **kwargs)
-        return json.loads(urlopen.call_args[0][0].data.decode("utf-8"))
-
-    def test_silent_message_disables_notification(self):
-        self.assertIs(self.sent_payload(silent=True)["disable_notification"], True)
-
-    def test_loud_by_default(self):
-        self.assertNotIn("disable_notification", self.sent_payload())
+            watch.send_telegram("hello")
+        payload = json.loads(urlopen.call_args[0][0].data.decode("utf-8"))
+        self.assertEqual(payload["text"], "hello")
+        self.assertNotIn("disable_notification", payload)
 
 
 class TestAiSelftest(unittest.TestCase):
@@ -726,12 +723,15 @@ class TestMainEndToEnd(unittest.TestCase):
     def run_main(self, catalog, prices):
         self.catalog.write_text(json.dumps(catalog), encoding="utf-8")
         self.prices.write_text(json.dumps(prices), encoding="utf-8")
-        with quiet(), mock.patch.object(watch, "send_telegram") as send, \
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()), \
+                mock.patch.object(watch, "send_telegram") as send, \
                 mock.patch.object(watch, "ai_summary", return_value="Похоже на релиз GPT-6.") as ai:
             watch.main([])
+        self.log = out.getvalue()
         return send, ai
 
-    def test_new_model_gets_an_ai_summary_and_a_loud_alert(self):
+    def test_new_model_gets_an_ai_summary_and_an_alert(self):
         send, ai = self.run_main(
             {"data": [{"id": "gpt-5"}, {"id": "gpt-6-sol", "limit": {"context": 1000000}}]},
             {"claude-opus-4-8": {}, "azure/gpt-5": {"max_input_tokens": 400000}},
@@ -739,22 +739,23 @@ class TestMainEndToEnd(unittest.TestCase):
         payload = ai.call_args[0][0]
         self.assertEqual([n["name"] for n in payload["novel"]], ["gpt-6-sol"])
         self.assertEqual(payload["novel"][0]["seen_in"][0]["details"], "limit.context=1000000")
+        send.assert_called_once()
         text = send.call_args[0][0]
-        self.assertFalse(send.call_args[1].get("silent", False))
         self.assertTrue(text.startswith("model-watch: 🆕"))
         self.assertIn("Похоже на релиз GPT-6.", text)
         self.assertIn("+ gpt-6-sol 🆕", text)
         self.assertIn("+ azure/gpt-5\n", text + "\n")
         self.assertNotIn("azure/gpt-5 🆕", text)
 
-    def test_known_models_in_new_places_skip_the_ai_and_stay_silent(self):
+    def test_known_models_in_new_places_stay_in_the_log(self):
         send, ai = self.run_main(
             {"data": [{"id": "gpt-5"}]},
             {"claude-opus-4-8": {}, "azure/gpt-5": {}, "bedrock/us.anthropic.claude-opus-4-8": {}},
         )
         ai.assert_not_called()
-        self.assertTrue(send.call_args[1]["silent"])
-        self.assertIn("новых моделей нет", send.call_args[0][0])
+        send.assert_not_called()
+        self.assertIn("model-watch: новых моделей нет", self.log)
+        self.assertIn("+ azure/gpt-5", self.log)
 
     def test_no_changes_send_nothing(self):
         send, ai = self.run_main({"data": [{"id": "gpt-5"}]}, {"claude-opus-4-8": {}})
@@ -824,7 +825,7 @@ class TestLeakDay(unittest.TestCase):
         send, ai = self.check("2026-09-22T15:27Z", ["gpt-5"])
         ai.assert_not_called()
         text = send.call_args[0][0]
-        self.assertFalse(send.call_args[1]["silent"])
+        send.assert_called_once()
         self.assertTrue(text.startswith("model-watch: 🫥"))
         self.assertIn("🫥 убрали: gpt-6-astra-minor из azure — появилось 22.09 13:10 UTC, больше ни в одном каталоге",
                       text)
@@ -833,7 +834,7 @@ class TestLeakDay(unittest.TestCase):
         send, ai = self.check("2026-09-22T18:59Z", ["gpt-5", "gpt-6-sol"])
         ai.assert_not_called()  # not novel any more: the memory kept it after Azure dropped it
         text = send.call_args[0][0]
-        self.assertFalse(send.call_args[1]["silent"])
+        send.assert_called_once()
         self.assertTrue(text.startswith("model-watch: ↩️"))
         self.assertIn("↩️ вернулось: gpt-6-sol — снова в azure", text)
         self.assertNotIn("🆕", text)
@@ -853,31 +854,29 @@ class TestLeakDay(unittest.TestCase):
 
         send, ai = self.check("2026-09-23T12:04Z", ["gpt-5"], "bump codex-rs again")
         ai.assert_not_called()
-        self.assertTrue(send.call_args[1]["silent"])
-        self.assertNotIn("🆕", send.call_args[0][0])
+        send.assert_not_called()  # already known: it stays in the log
 
     def test_a_model_that_leaves_after_a_week_and_comes_back_is_routine(self):
         self.check("2026-09-22T13:10Z", ["gpt-5", "grok-3-beta"])
         send, _ = self.check("2026-09-30T09:00Z", ["gpt-5"])
-        self.assertTrue(send.call_args[1]["silent"])  # a cleanup, not a pulled leak
+        send.assert_not_called()  # a cleanup, not a pulled leak
         send, ai = self.check("2026-10-01T09:00Z", ["gpt-5", "grok-3-beta"])
         ai.assert_not_called()
-        self.assertTrue(send.call_args[1]["silent"])  # a revert, not a return
-        self.assertNotIn("↩️", send.call_args[0][0])
+        send.assert_not_called()  # a revert, not a return
 
     def test_a_name_a_commit_feed_leaked_is_news_when_a_catalog_lists_it(self):
         self.check("2026-09-22T18:59Z", ["gpt-5"], "route gpt-7 behind a flag")
         self.check("2026-09-23T09:00Z", ["gpt-5"], "docs only")  # the feed scrolled past it
         send, ai = self.check("2026-09-25T18:00Z", ["gpt-5", "gpt-7"], "docs only")
         self.assertEqual([n["name"] for n in ai.call_args[0][0]["novel"]], ["gpt-7"])
-        self.assertFalse(send.call_args[1]["silent"])
+        send.assert_called_once()
         self.assertTrue(send.call_args[0][0].startswith("model-watch: 🆕"))
 
     def test_a_catalog_listing_is_news_while_the_feed_still_mentions_the_name(self):
         self.check("2026-09-22T18:59Z", ["gpt-5"], "route gpt-7 behind a flag")
         send, ai = self.check("2026-09-22T21:59Z", ["gpt-5", "gpt-7"], "route gpt-7 behind a flag")
         self.assertEqual([n["name"] for n in ai.call_args[0][0]["novel"]], ["gpt-7"])
-        self.assertFalse(send.call_args[1]["silent"])
+        send.assert_called_once()
 
     def test_names_the_memory_missed_are_kept_when_they_leave(self):
         # seen.tsv was seeded before the last snapshot, which brought gemini-x; the next check drops it again

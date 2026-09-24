@@ -7,8 +7,8 @@ One run:
   2. downloads every source (JSON or text);
   3. normalizes it and extracts the list of model ids;
   4. writes the snapshot to data/<name>.json and data/<name>.ids.txt;
-  5. diffs the ids against the last commit (git diff) and sends the added and removed ids
-     to Telegram (or to stdout when there is no token);
+  5. diffs the ids against the last commit (git diff); a report with signs of new models goes
+     to Telegram (or to stdout when there is no token), routine changes only to the log;
   6. keeps every name it has ever seen in data/seen.tsv and reports on its own when a fresh
      leak leaves a catalog and when a pulled name comes back.
 
@@ -564,7 +564,8 @@ def ai_summary(payload: dict, client=None) -> str | None:
 
 def format_message(blocks: list[str], novel_names: list[str], ai_text: str | None,
                    returned: list[dict] = (), pulled: list[dict] = ()) -> tuple[str, bool]:
-    """The Telegram text, and whether to send it silently: novel names, returns and pulled leaks are worth a sound."""
+    """The report, and whether it shows signs of new models: novel names, pulled leaks or returns. Only such a report
+    goes to Telegram; routine changes stay in the Actions log and in the history of data/."""
     body = "\n\n".join(blocks)
     if novel_names and ai_text:
         head = "model-watch: 🆕 признаки новых моделей"
@@ -577,11 +578,11 @@ def format_message(blocks: list[str], novel_names: list[str], ai_text: str | Non
     elif pulled:
         head = "model-watch: 🫥 убрали из каталогов"
     else:
-        return f"model-watch: новых моделей нет\n\n{body}", True
+        return f"model-watch: новых моделей нет\n\n{body}", False
     parts = [head, format_events(list(returned), list(pulled))]
     if novel_names and ai_text:
         parts += [ai_text, "— — —"]
-    return "\n\n".join(p for p in parts + [body] if p), False
+    return "\n\n".join(p for p in parts + [body] if p), True
 
 
 def run_ai_selftest(client=None) -> int:
@@ -669,7 +670,7 @@ def diff_ids(ids_path: Path) -> tuple[list[str], list[str], bool]:
     return added, removed, False
 
 
-def send_telegram(text: str, silent: bool = False) -> None:
+def send_telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -678,8 +679,6 @@ def send_telegram(text: str, silent: bool = False) -> None:
     if len(text) > TG_LIMIT:
         text = text[: TG_LIMIT - 20] + "\n…(обрезано)"
     body = {"chat_id": chat_id, "text": text, "disable_web_page_preview": True}
-    if silent:
-        body["disable_notification"] = True  # arrives in the chat, but the phone stays quiet
     payload = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/sendMessage",
@@ -780,8 +779,11 @@ def main(argv: list[str] | None = None) -> int:
     if report or returned or pulled:
         groups = group_novel(changes)
         ai_text = ai_summary(build_ai_payload(groups, changes)) if groups else None
-        text, silent = format_message(report, sorted(groups), ai_text, returned, pulled)
-        send_telegram(text, silent=silent)
+        text, news = format_message(report, sorted(groups), ai_text, returned, pulled)
+        if news:
+            send_telegram(text)
+        else:  # routine changes: the log and the history of data/ keep them, Telegram only hears about new models
+            print(text)
     else:
         print("изменений нет")
 
