@@ -789,6 +789,7 @@ gemini-3.5-flash-lite
 gemini-3.6-flash
 gemini-3.7-flash
 gemini-3.8-flash
+gemini-3.8-flash-cyber
 gemini-3.8-live
 gemini-3.8-live-extended-thinking
 gemini-embedding-001
@@ -1526,6 +1527,7 @@ vertex_ai/gemini-3.5-transcribe-preview
 vertex_ai/gemini-3.6-flash
 vertex_ai/gemini-3.7-flash
 vertex_ai/gemini-3.8-flash
+vertex_ai/gemini-3.8-flash-cyber
 vertex_ai/gemini-embedding-2
 vertex_ai/gemini-embedding-2-preview
 vertex_ai/gemini-omni-1.1-flash
