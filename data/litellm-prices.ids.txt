@@ -222,6 +222,8 @@ azure/gpt-6-luna
 azure/gpt-6-luna-2026-09-22
 azure/gpt-6-sol
 azure/gpt-6-sol-2026-09-22
+azure/gpt-audio
+azure/gpt-audio-1.5
 azure/gpt-audio-1.5-2026-02-23
 azure/gpt-audio-2025-08-28
 azure/gpt-audio-mini
@@ -237,6 +239,8 @@ azure/gpt-image-2.5-flare
 azure/gpt-image-2.5-sunburst
 azure/gpt-live-1
 azure/gpt-live-transcribe
+azure/gpt-realtime
+azure/gpt-realtime-1.5
 azure/gpt-realtime-1.5-2026-02-23
 azure/gpt-realtime-2
 azure/gpt-realtime-2.1
