@@ -782,6 +782,8 @@ gemini-live-2.5-flash-preview-native-audio-09-2025
 gemini-omni-flash-preview
 gemini-pro-latest
 gemini-robotics-er-1.5-preview
+gemini/deep-research-max-preview-04-2026
+gemini/deep-research-preview-04-2026
 gemini/deep-research-pro-preview-12-2025
 gemini/gemini-2.0-flash-exp-image-generation
 gemini/gemini-2.5-computer-use-preview-10-2025
@@ -796,9 +798,12 @@ gemini/gemini-2.5-pro
 gemini/gemini-2.5-pro-preview-tts
 gemini/gemini-3-flash-preview
 gemini/gemini-3-pro-image
+gemini/gemini-3-pro-image-preview
 gemini/gemini-3.1-flash-image
+gemini/gemini-3.1-flash-image-preview
 gemini/gemini-3.1-flash-lite
 gemini/gemini-3.1-flash-lite-image
+gemini/gemini-3.1-flash-lite-preview
 gemini/gemini-3.1-flash-live-preview
 gemini/gemini-3.1-flash-tts-preview
 gemini/gemini-3.1-pro-preview
@@ -817,6 +822,7 @@ gemini/gemini-3.8-live
 gemini/gemini-3.8-live-extended-thinking
 gemini/gemini-embedding-001
 gemini/gemini-embedding-2
+gemini/gemini-embedding-2-preview
 gemini/gemini-exp-1114
 gemini/gemini-exp-1206
 gemini/gemini-flash-latest
