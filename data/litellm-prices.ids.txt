@@ -1528,6 +1528,7 @@ vertex_ai/gemini-3.6-flash
 vertex_ai/gemini-3.7-flash
 vertex_ai/gemini-3.8-flash
 vertex_ai/gemini-3.8-flash-cyber
+vertex_ai/gemini-3.8-live
 vertex_ai/gemini-embedding-2
 vertex_ai/gemini-embedding-2-preview
 vertex_ai/gemini-omni-1.1-flash
