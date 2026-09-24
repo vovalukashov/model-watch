@@ -42,6 +42,7 @@ anthropic.claude-fable-5-1
 anthropic.claude-haiku-4-5-20251001-v1:0
 anthropic.claude-haiku-4-5@20251001
 anthropic.claude-instant-v1
+anthropic.claude-mythos-5-1
 anthropic.claude-mythos-preview
 anthropic.claude-opus-4-1-20250805-v1:0
 anthropic.claude-opus-4-20250514-v1:0
@@ -57,9 +58,19 @@ anthropic.claude-sonnet-4-6
 anthropic.claude-sonnet-5
 anthropic.claude-v1
 anthropic.claude-v2:1
+apac.anthropic.claude-fable-5
 apac.anthropic.claude-haiku-4-5-20251001-v1:0
+apac.anthropic.claude-mythos-preview
+apac.anthropic.claude-opus-4-7
+apac.anthropic.claude-opus-4-8
+apac.anthropic.claude-opus-5
+apac.anthropic.claude-opus-5-5
 apac.anthropic.claude-sonnet-4-20250514-v1:0
+apac.anthropic.claude-sonnet-4-6
+apac.anthropic.claude-sonnet-5
+au.anthropic.claude-fable-5
 au.anthropic.claude-haiku-4-5-20251001-v1:0
+au.anthropic.claude-mythos-preview
 au.anthropic.claude-opus-4-6-v1
 au.anthropic.claude-opus-4-7
 au.anthropic.claude-opus-4-8
@@ -882,6 +893,7 @@ github_copilot/gpt-5.3-codex
 global.anthropic.claude-fable-5
 global.anthropic.claude-fable-5-1
 global.anthropic.claude-haiku-4-5-20251001-v1:0
+global.anthropic.claude-mythos-5-1
 global.anthropic.claude-opus-4-5-20251101-v1:0
 global.anthropic.claude-opus-4-6-v1
 global.anthropic.claude-opus-4-7
@@ -1384,6 +1396,9 @@ us.anthropic.claude-3-opus-20240229-v1:0
 us.anthropic.claude-fable-5
 us.anthropic.claude-fable-5-1
 us.anthropic.claude-haiku-4-5-20251001-v1:0
+us.anthropic.claude-mythos-5
+us.anthropic.claude-mythos-5-1
+us.anthropic.claude-mythos-preview
 us.anthropic.claude-opus-4-1-20250805-v1:0
 us.anthropic.claude-opus-4-20250514-v1:0
 us.anthropic.claude-opus-4-5-20251101-v1:0
