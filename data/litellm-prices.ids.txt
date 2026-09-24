@@ -235,13 +235,18 @@ azure/gpt-image-2
 azure/gpt-image-2-2026-04-21
 azure/gpt-image-2.5-flare
 azure/gpt-image-2.5-sunburst
+azure/gpt-live-1
+azure/gpt-live-transcribe
 azure/gpt-realtime-1.5-2026-02-23
+azure/gpt-realtime-2
 azure/gpt-realtime-2.1
 azure/gpt-realtime-2.1-mini
 azure/gpt-realtime-2025-08-28
 azure/gpt-realtime-mini
 azure/gpt-realtime-mini-2025-10-06
+azure/gpt-realtime-translate
 azure/gpt-realtime-whisper
+azure/gpt-transcribe
 azure/high/1024-x-1024/gpt-image-1
 azure/high/1024-x-1024/gpt-image-1-mini
 azure/high/1024-x-1536/gpt-image-1
@@ -310,6 +315,7 @@ azure/us/gpt-6-astra
 azure/us/gpt-6-luna
 azure/us/gpt-6-sol
 azure/us/gpt-chat-latest
+azure_ai/FW-GPT-OSS-120B
 azure_ai/claude-fable-5
 azure_ai/claude-fable-5-1
 azure_ai/claude-haiku-4-5
