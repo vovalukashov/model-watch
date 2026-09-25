@@ -281,14 +281,17 @@ class TestWebSourcePatterns(unittest.TestCase):
 
     def test_chatgpt_web_catches_plan_rollout_strings(self):
         # how a new plan shows up in the bundle: subscription UI strings, planType comparisons, price points —
-        # promax surfaced in chatgpt.com's code two hours before PlanType.ts
+        # promax surfaced in chatgpt.com's code two hours before PlanType.ts, and Chubby's find
+        # "chatgpt-pro-lite-country-availability" is a change to an existing plan rolling out to new countries
         ids = self.matches("chatgpt-web",
                            'chatgpt-subscription-complete-pro-max chatgpt-promax-intent-to-pay '
+                           'chatgpt-pro-lite-country-availability '
                            'planType:"promax" {"plan_type":"go"} "plans.prolite" '
                            '"chatgpt-free-plan" plans are great plan.id '
                            '"$20" "$200.00" "$2" v2.5')
-        self.assertEqual(ids, ["$20", "$200.00", "chatgpt-free-plan", "chatgpt-promax-intent-to-pay",
-                               "chatgpt-subscription-complete-pro-max", "go", "id", "prolite", "promax"])
+        self.assertEqual(ids, ["$20", "$200.00", "chatgpt-free-plan", "chatgpt-pro-lite-country-availability",
+                               "chatgpt-promax-intent-to-pay", "chatgpt-subscription-complete-pro-max",
+                               "go", "id", "prolite", "promax"])
 
     def test_claude_web_keeps_model_ids_and_drops_assets(self):
         ids = self.matches("claude-web",

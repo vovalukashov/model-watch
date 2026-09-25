@@ -191,10 +191,39 @@ async function pageFunction(context) {
     // every fetch is capped and a global deadline leaves headroom under the actor's run timeout:
     // one hanging bundle must not sink the whole run (claude.ai did exactly that)
     const deadline = Date.now() + 150000;
-    const queue = scriptUrls.slice(0, 60);
+    const origin = new URL(page.url()).origin;
+    // bundles load through the page itself first: the browser's TLS fingerprint, cookies and proxy
+    // make the requests look like real traffic — CDN fronting the app bundles rejects the actor's
+    // datacenter IP outright (chatgpt.com app: 60 of 60 blocked), while the page passes
+    const grabbed = await page.evaluate(async ({ urls, dl }) => {
+        const grab = async (u) => {
+            try {
+                const r = await fetch(u, { signal: AbortSignal.timeout(10000) });
+                return { u, t: r.ok ? await r.text() : null };
+            } catch (e) { return { u, t: null }; }
+        };
+        const out = [];
+        while (urls.length && Date.now() < dl) {
+            const batch = urls.splice(0, 6);
+            out.push(...await Promise.all(batch.map(grab)));
+        }
+        return out;
+    }, { urls: scriptUrls.slice(0, 60), dl: deadline }).catch(() => null);
+    const retry = [];
+    if (grabbed === null) {
+        retry.push(...scriptUrls.slice(0, 60));  // evaluate itself crashed: scan everything from the actor
+    } else {
+        blocked += scriptUrls.slice(0, 60).length - grabbed.length;  // batches cut off by the deadline
+        for (const { u, t } of grabbed) {
+            if (t !== null) { scan(t); fetched++; }
+            else if (u.startsWith(origin)) { blocked++; }  // same-origin has no CORS excuse: no retry
+            else { retry.push(u); }
+        }
+    }
+    // cross-origin failures retried from the actor: no CORS outside the browser
     const worker = async () => {
-        while (queue.length && Date.now() < deadline) {
-            const url = queue.shift();
+        while (retry.length && Date.now() < deadline) {
+            const url = retry.shift();
             try {
                 const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
                 if (!resp.ok) { blocked++; continue; }
