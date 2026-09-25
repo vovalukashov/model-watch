@@ -1,0 +1,12 @@
+claude-ai
+claude-ai-pending-login-email
+claude-approvals
+claude-code
+claude-conversation-store
+claude-f
+claude-for-microsoft-365
+claude-for-slack
+claude-in-chrome
+claude-response
+claude-science
+claude-security
