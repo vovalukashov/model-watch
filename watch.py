@@ -236,6 +236,11 @@ def apify_run(src: dict, token: str) -> bytes:
                                "apifyProxyGroups": src.get("proxy_groups", ["RESIDENTIAL"])},
         "maxRequestsPerCrawl": len(urls),
         "maxConcurrency": 1,
+        # networkidle (the default) never fires on claude.ai, and 3 default retries at the 60 s
+        # page-load cap burn the whole run timeout; the page function waits for idle itself
+        "waitUntil": "domcontentloaded",
+        "maxRequestRetries": 1,
+        "useChrome": True,  # real Chrome passes anti-bot checks more often than Chromium
         "pageLoadTimeoutSecs": 60,
         "pageFunctionTimeoutSecs": APIFY_RUN_TIMEOUT,
     }
