@@ -110,6 +110,7 @@ chatgpt-library-hidden-providers		1
 chatgpt-library-hidden-providers-v2		1
 chatgpt-library-last-tab		1
 chatgpt-library-show-hidden-files		1
+chatgpt-lightweight-web-composer-image-draft-v1	2026-09-25T13:53Z	1
 chatgpt-local-home-composer		1
 chatgpt-login-finalizer-contract		1
 chatgpt-message-share-og-image-web-targeting		1
@@ -177,6 +178,10 @@ chatgpt-version		1
 chatgpt-web		1
 chatgpt-web-app-download		1
 chatgpt-web-drag-file-rate-limit-modal-viewed-at		1
+chatgpt-web-mobile-retired-service-worker-reload-v1	2026-09-25T13:53Z	1
+chatgpt-web-mobile-shell-v14	2026-09-25T13:53Z	1
+chatgpt-web-mobile-shell-v15	2026-09-25T13:53Z	1
+chatgpt-web-mobile-shell-v16	2026-09-25T13:53Z	1
 chatgpt-web-paginated-messages-rollout		1
 chatgpt-web-realtime-dictation		1
 chatgpt-web-request-purpose		1
@@ -199,27 +204,174 @@ claude-4-5-sonnet		1
 claude-4-6-sonnet		1
 claude-4-opus		1
 claude-4-sonnet		1
+claude-50e62f90a2c85243eef42913398f7c8f1534abef-dmg	2026-09-25T13:53Z	1
+claude-adopted	2026-09-25T13:53Z	1
 claude-ai		1
+claude-ai-account	2026-09-25T13:53Z	1
+claude-ai-age-verification-hoc-gate	2026-09-25T13:53Z	1
+claude-ai-angelica	2026-09-25T13:53Z	1
+claude-ai-angelica-transport	2026-09-25T13:53Z	1
+claude-ai-ccr-support-sharing-enabled	2026-09-25T13:53Z	1
+claude-ai-chat-sharing-enabled	2026-09-25T13:53Z	1
+claude-ai-clients-completions-use-bard	2026-09-25T13:53Z	1
+claude-ai-code-landing-post-auth	2026-09-25T13:53Z	1
+claude-ai-cross-tab-sync-main	2026-09-25T13:53Z	1
+claude-ai-email-prompt-id-prefill-proj-chalk-telemetry-api-enable-claude-code-policy-compliance-taints-proj-chalk-k12-legal-links-disable-destructive-mcp-tools-by-default-sensitive-mcps-per-call-consent-yukon-silver-tool-perms-cai-gentle-ocean-cai-tender-island-mcp-tool-approval-config-sensitive-mcp-tools-claude-ai-mcp-skip-schema-validation-cai-dazzling-crystal-cai-elegant-acorn-cai-curious-puddle-apps-mcp-apps-experimental-flags-mcp-apps-frame-domains-cai-crystalline-cosmos-apps-redacted-strings-bulgogi-apps-redacted-strings-cilantro-apps-redacted-strings-cubeb-apps-redacted-strings-damson-2-apps-redacted-strings-fennel-apps-redacted-strings-fenugreek-apps-redacted-strings-glass-apps-redacted-strings-greengage-apps-redacted-strings-kunefeh-apps-redacted-strings-parsley-apps-redacted-strings-pitbull-apps-redacted-strings-pomelo-apps-redacted-strings-poppy-apps-redacted-strings-purlin-apps-redacted-strings-scoville-apps-redacted-strings-amber-lantern-apps-redacted-strings-seltzer-apps-redacted-strings-sesame-apps-redacted-strings-shiso-apps-redacted-strings-stevia-apps-redacted-strings-sumac-2-apps-redacted-strings-workbench-cowork-bypass-permissions-mode-cowork-auto-permission-mode-ccr-auto-permission-mode-ccr-mcp-permission-mode-override-ccd-automode-required-models-ccd-auto-default-mode-ccr-auto-default-mode-ccr-plan-mode-enabled-tengu-hollow-lantern-cowork-auto-mode-include-allowed-write-mcp-web-cowork-tamarin-claudeai-permission-modes-managed-settings-enforce-org-skill-disablement-main-cowork-argonaut-org-policies-main-ccd-deeplink-trusted-folder-skip-main-cai-starry-orbit-cai-rustling-quill-cai-tender-kazoo-cai-sparkling-fern-claudeai-default-wiggle-egress-enabled-claudeai-default-wiggle-egress-enabled-without-spotlight-claudeai-default-wiggle-egress-hosts-template-mcp-connector-directory-connect-intent-confirm-cai-zany-coral-cai-calm-cocoa-claude-ai-markdown-mermaid-render-cai-snuggly-crayon-claude-ai-age-verification-hoc-gate-claude-ai-share-age-verification-disabled-onboarding-age-verification-ccr-per-message-attestation-web-ccr-epitaxy-disable-signed-initialize-trusted-device-self-attestation-cowork-remote-device-revoked-reenroll-cowork-device-attestation-header-send-disabled-cai-elegant-rainbow-cowork-safety-banners-cowork-safety-flags-batch-main-post-upgrade-activation-flow-post-upgrade-activation-flow-max---gb--1924605711-wisteria-connectors-directory-bff-migration-mcp-server-spec-directory-ccd-disable-feature-discovery-claudified-skills-academy-video-src-claudeai-allspice-main-apatite-program-page-copy-apatite-pricing-notice-pebble-orchard-quill-worn-elbow-cotton---gb--3060661201-claude-ai-haystack-setup---gb--98499577---gb--1871704739---gb--2786516907---gb--508488964	2026-09-25T13:53Z	1
+claude-ai-forwardstooldecisionextras	2026-09-25T13:53Z	1
+claude-ai-hub-web-delivery	2026-09-25T13:53Z	1
+claude-ai-integration-sharing-enabled	2026-09-25T13:53Z	1
+claude-ai-learning-mode	2026-09-25T13:53Z	1
+claude-ai-locations	2026-09-25T13:53Z	1
+claude-ai-login-connector-connect-context-disabled-main	2026-09-25T13:53Z	1
+claude-ai-login-hcaptcha-frontend-enabled	2026-09-25T13:53Z	1
+claude-ai-login-upsell	2026-09-25T13:53Z	1
+claude-ai-owner-can-upgrade-plan	2026-09-25T13:53Z	1
 claude-ai-pending-login-email		1
+claude-ai-persisted-cache-retention	2026-09-25T13:53Z	1
+claude-ai-popup-google-auth-hcaptcha-sitekey	2026-09-25T13:53Z	1
+claude-ai-product-feedback	2026-09-25T13:53Z	1
+claude-ai-rq-cache-first-screen-days	2026-09-25T13:53Z	1
+claude-ai-segment-enabled	2026-09-25T13:53Z	1
+claude-ai-sot-has-claude-code	2026-09-25T13:53Z	1
+claude-ai-targeted-promotion	2026-09-25T13:53Z	1
+claude-ai-version	2026-09-25T13:53Z	1
+claude-ai-web	2026-09-25T13:53Z	1
+claude-ai-xtab	2026-09-25T13:53Z	1
+claude-api-in-artifacts	2026-09-25T13:53Z	1
 claude-approvals		1
+claude-browser	2026-09-25T13:53Z	1
+claude-browser--	2026-09-25T13:53Z	1
+claude-browser-extension	2026-09-25T13:53Z	1
+claude-browser-use	2026-09-25T13:53Z	1
+claude-button	2026-09-25T13:53Z	1
+claude-by-anthropic	2026-09-25T13:53Z	1
+claude-chrome	2026-09-25T13:53Z	1
+claude-cli	2026-09-25T13:53Z	1
 claude-code		1
+claude-code-angelica-admin-toggle	2026-09-25T13:53Z	1
+claude-code-claude-code-install-claude-in-slack-claude-science-cli-landing-code-comparison-connect-connect-github-connector-cowork-cowork-artifact-cowork-sessions-create-customize-design-desktop-design-desktop-landing-device-code-verify-directory-discover-downgrade-download-download-operon-downloads-drive-auth-enterprise-enterprise-tos-epitaxy-export-form-gift-github-integration-github-success-idv-complete-interviewer-invites-join-k12districts-knowledge-labs-verification-learning-local-sessions-logged-in-login-logout-lti-magic-link-maintenance-mcp-mcp-auth-callback-messages-mobile-new-no-organization-oauth-offers-onboarding-oncall-org-org-discovery-pricing-project-projects-provision-public-recents-referral-reported-restricted-scheduled-task-security-settings-setup-2fa-setup-claude-setup-code-setup-cowork-setup-desktop-3p-share-skill-proposals-skills-space-sso-callback-submit-quick-entry-support-task-teachers-team-promo-test-tutorial-unauthorized-upgrade-us-govt-system-warning-voice-prototype	2026-09-25T13:53Z	1
+claude-code-data-sharing	2026-09-25T13:53Z	1
+claude-code-default-worker-environment-id	2026-09-25T13:53Z	1
+claude-code-default-worker-pool-id	2026-09-25T13:53Z	1
+claude-code-desktop	2026-09-25T13:53Z	1
+claude-code-desktop-auto-permissions	2026-09-25T13:53Z	1
+claude-code-desktop-bypass-permissions	2026-09-25T13:53Z	1
+claude-code-desktop-sidebar	2026-09-25T13:53Z	1
+claude-code-disable-anthropic-compute	2026-09-25T13:53Z	1
+claude-code-enterprise	2026-09-25T13:53Z	1
+claude-code-fast-mode	2026-09-25T13:53Z	1
+claude-code-guest-pass	2026-09-25T13:53Z	1
+claude-code-guest-pass-a47c	2026-09-25T13:53Z	1
+claude-code-hide-managed-environments	2026-09-25T13:53Z	1
+claude-code-install-nudge-code-file-attached	2026-09-25T13:53Z	1
+claude-code-install-nudge-dismissed	2026-09-25T13:53Z	1
+claude-code-install-nudge-displayed	2026-09-25T13:53Z	1
+claude-code-install-nudge-install-clicked	2026-09-25T13:53Z	1
+claude-code-install-nudge-install-menu-opened	2026-09-25T13:53Z	1
+claude-code-marketplace	2026-09-25T13:53Z	1
+claude-code-permission-mode-policy	2026-09-25T13:53Z	1
+claude-code-plugins	2026-09-25T13:53Z	1
+claude-code-quick-web-setup	2026-09-25T13:53Z	1
+claude-code-remote	2026-09-25T13:53Z	1
+claude-code-remote-control	2026-09-25T13:53Z	1
+claude-code-review	2026-09-25T13:53Z	1
+claude-code-routines	2026-09-25T13:53Z	1
+claude-code-security	2026-09-25T13:53Z	1
+claude-code-self-hosted-runners	2026-09-25T13:53Z	1
+claude-code-trial	2026-09-25T13:53Z	1
+claude-code-trusted-devices-admin-toggle	2026-09-25T13:53Z	1
+claude-code-trusted-devices-required	2026-09-25T13:53Z	1
+claude-code-version-too-old	2026-09-25T13:53Z	1
+claude-code-waffles	2026-09-25T13:53Z	1
+claude-code-web	2026-09-25T13:53Z	1
+claude-code-web-sidebar	2026-09-25T13:53Z	1
+claude-code-workflows	2026-09-25T13:53Z	1
+claude-code-zdr	2026-09-25T13:53Z	1
+claude-com	2026-09-25T13:53Z	1
+claude-com-cookie	2026-09-25T13:53Z	1
+claude-com-other	2026-09-25T13:53Z	1
+claude-com-static-email	2026-09-25T13:53Z	1
+claude-com-static-google-success	2026-09-25T13:53Z	1
+claude-com-static-popup-blocked	2026-09-25T13:53Z	1
+claude-com-static-sso-required	2026-09-25T13:53Z	1
+claude-conversation-ledger	2026-09-25T13:53Z	1
 claude-conversation-store		1
+claude-cowork-safely	2026-09-25T13:53Z	1
+claude-dark	2026-09-25T13:53Z	1
+claude-design	2026-09-25T13:53Z	1
+claude-design-hero	2026-09-25T13:53Z	1
+claude-design-hero-en-vtt	2026-09-25T13:53Z	1
+claude-design-hero-mp4	2026-09-25T13:53Z	1
+claude-design-hero-trimmed	2026-09-25T13:53Z	1
+claude-design-hero-trimmed-mp4	2026-09-25T13:53Z	1
+claude-design-login-hero	2026-09-25T13:53Z	1
+claude-design-survey-dismissed	2026-09-25T13:53Z	1
+claude-design-survey-rated	2026-09-25T13:53Z	1
+claude-design-survey-responded	2026-09-25T13:53Z	1
+claude-desktop	2026-09-25T13:53Z	1
+claude-desktop-amd64-deb	2026-09-25T13:53Z	1
+claude-desktop-arm64-deb	2026-09-25T13:53Z	1
+claude-desktop-chat	2026-09-25T13:53Z	1
+claude-desktop-code	2026-09-25T13:53Z	1
+claude-device-binding	2026-09-25T13:53Z	1
+claude-device-binding-epoch	2026-09-25T13:53Z	1
+claude-dot	2026-09-25T13:53Z	1
+claude-e2e-test-account-regex	2026-09-25T13:53Z	1
+claude-e2e-test-account-regex-test	2026-09-25T13:53Z	1
+claude-email-invite-joined-at-signin	2026-09-25T13:53Z	1
+claude-email-invite-resume	2026-09-25T13:53Z	1
+claude-email-invite-resume-offer	2026-09-25T13:53Z	1
+claude-email-invite-signin-join	2026-09-25T13:53Z	1
+claude-email-invite-signin-link-join	2026-09-25T13:53Z	1
+claude-enterprise	2026-09-25T13:53Z	1
+claude-error	2026-09-25T13:53Z	1
+claude-excel	2026-09-25T13:53Z	1
 claude-f		1
 claude-fable-5		1
 claude-fable-5-1		1
 claude-fable-latest		1
+claude-failed-first-turn-prompt	2026-09-25T13:53Z	1
+claude-for-chrome	2026-09-25T13:53Z	1
+claude-for-excel	2026-09-25T13:53Z	1
 claude-for-microsoft-365		1
+claude-for-powerpoint	2026-09-25T13:53Z	1
 claude-for-slack		1
+claude-for-word	2026-09-25T13:53Z	1
+claude-free	2026-09-25T13:53Z	1
+claude-google-desktop-hop-started-at	2026-09-25T13:53Z	1
 claude-haiku-3		1
 claude-haiku-3-5		1
 claude-haiku-4-5		1
 claude-haiku-latest		1
 claude-history		1
+claude-history-claude-settings	2026-09-25T13:53Z	1
+claude-image	2026-09-25T13:53Z	1
 claude-in-chrome		1
+claude-in-chrome-safely	2026-09-25T13:53Z	1
+claude-in-slack	2026-09-25T13:53Z	1
+claude-in-slack-channel-spend	2026-09-25T13:53Z	1
+claude-in-slack-hero	2026-09-25T13:53Z	1
+claude-in-slack-hero-mp4	2026-09-25T13:53Z	1
+claude-in-slack-hero-vtt	2026-09-25T13:53Z	1
+claude-individual	2026-09-25T13:53Z	1
 claude-instant-v1		1
+claude-invite-link-resume	2026-09-25T13:53Z	1
+claude-invite-link-resume-offer	2026-09-25T13:53Z	1
+claude-is-providing-incorrect-or-misleading-responses-what-s-going-on	2026-09-25T13:53Z	1
+claude-issuer	2026-09-25T13:53Z	1
+claude-light	2026-09-25T13:53Z	1
+claude-login-v2-mp4	2026-09-25T13:53Z	1
+claude-max	2026-09-25T13:53Z	1
+claude-menu	2026-09-25T13:53Z	1
+claude-microsoft-365	2026-09-25T13:53Z	1
+claude-mode-offered	2026-09-25T13:53Z	1
 claude-mythos-5		1
 claude-mythos-5-1		1
 claude-mythos-preview		1
+claude-native	2026-09-25T13:53Z	1
+claude-nest	2026-09-25T13:53Z	1
+claude-offers	2026-09-25T13:53Z	1
+claude-opus	2026-09-25T13:53Z	1
 claude-opus-4		1
 claude-opus-4-1		1
 claude-opus-4-1-20250805-thinking		1
@@ -245,10 +397,24 @@ claude-opus4-5		1
 claude-opus4-6		1
 claude-opus4-7		1
 claude-opus4-8		1
+claude-pending	2026-09-25T13:53Z	1
+claude-plans	2026-09-25T13:53Z	1
+claude-platform	2026-09-25T13:53Z	1
+claude-plugin-telemetry-v1	2026-09-25T13:53Z	1
+claude-plugins-official	2026-09-25T13:53Z	1
+claude-powerpoint	2026-09-25T13:53Z	1
+claude-press	2026-09-25T13:53Z	1
+claude-preview	2026-09-25T13:53Z	1
+claude-pro	2026-09-25T13:53Z	1
 claude-response		1
 claude-science		1
+claude-science-chat-banner-upsell-cta-clicked	2026-09-25T13:53Z	1
+claude-science-chat-banner-upsell-dismissed	2026-09-25T13:53Z	1
+claude-science-chat-banner-upsell-displayed	2026-09-25T13:53Z	1
 claude-security		1
 claude-settings		1
+claude-ship	2026-09-25T13:53Z	1
+claude-slack	2026-09-25T13:53Z	1
 claude-sonnet-3-5		1
 claude-sonnet-3-5-june		1
 claude-sonnet-3-7		1
@@ -261,8 +427,16 @@ claude-sonnet-4-6-thinking		1
 claude-sonnet-5		1
 claude-sonnet-5-free		1
 claude-sonnet-latest		1
+claude-start	2026-09-25T13:53Z	1
+claude-system-message	2026-09-25T13:53Z	1
+claude-tag	2026-09-25T13:53Z	1
+claude-team	2026-09-25T13:53Z	1
 claude-v1		1
 claude-v2		1
+claude-web	2026-09-25T13:53Z	1
+claude-web-login	2026-09-25T13:53Z	1
+claude-web-social	2026-09-25T13:53Z	1
+claude-word	2026-09-25T13:53Z	1
 codestral		1
 codex-access-access		1
 codex-access-allow		1
@@ -427,6 +601,7 @@ enterprise-cbp-usage-based		1
 ew		1
 facebook-deit-base-patch16-224		1
 fastgpt		1
+fe	2026-09-25T13:53Z	1
 flux-1-1-pro		1
 flux-1-kontext-pro		1
 flux-2-flex		1
@@ -1069,6 +1244,7 @@ phi-4		1
 phi-4-mini-instruct		1
 phi-4-mini-reasoning		1
 phi-4-reasoning		1
+plan	2026-09-25T13:53Z	1
 plus		1
 pro		1
 prolite		1
@@ -1118,4 +1294,5 @@ void		1
 wc		1
 wi		1
 xpersona-gpt-5-5		1
+xr	2026-09-25T13:53Z	1
 zvr		1

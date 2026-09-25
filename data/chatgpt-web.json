@@ -108,6 +108,7 @@
   "chatgpt-library-hidden-providers-v2",
   "chatgpt-library-last-tab",
   "chatgpt-library-show-hidden-files",
+  "chatgpt-lightweight-web-composer-image-draft-v1",
   "chatgpt-local-home-composer",
   "chatgpt-login-finalizer-contract",
   "chatgpt-message-share-og-image-web-targeting",
@@ -175,6 +176,10 @@
   "chatgpt-web",
   "chatgpt-web-app-download",
   "chatgpt-web-drag-file-rate-limit-modal-viewed-at",
+  "chatgpt-web-mobile-retired-service-worker-reload-v1",
+  "chatgpt-web-mobile-shell-v14",
+  "chatgpt-web-mobile-shell-v15",
+  "chatgpt-web-mobile-shell-v16",
   "chatgpt-web-paginated-messages-rollout",
   "chatgpt-web-realtime-dictation",
   "chatgpt-work-feedback",
@@ -297,14 +302,14 @@
   {
    "blocked": 1,
    "fetched": 59,
-   "scripts": 71,
-   "url": "https://chatgpt.com/pricing"
+   "scripts": 139,
+   "url": "https://chatgpt.com/"
   },
   {
-   "blocked": 60,
-   "fetched": 0,
-   "scripts": 138,
-   "url": "https://chatgpt.com/"
+   "blocked": 1,
+   "fetched": 59,
+   "scripts": 71,
+   "url": "https://chatgpt.com/pricing"
   }
  ]
 }
