@@ -238,6 +238,30 @@ class TestApify(unittest.TestCase):
                 watch.apify_run(self.SRC, "t")
         self.assertIn("bad input", str(ctx.exception))
 
+    def apify_reply(self, items):
+        reply = mock.MagicMock()
+        reply.__enter__.return_value.read.return_value = json.dumps(items).encode("utf-8")
+        return reply
+
+    def test_a_run_with_every_bundle_blocked_is_an_error(self):
+        # the CDN closing all bundles at once must not overwrite the baseline with a matches-from-HTML-only snapshot
+        items = [{"url": "https://chatgpt.com/", "scripts": 30, "fetched": 0, "blocked": 30, "matches": []}]
+        with mock.patch.object(watch.urllib.request, "urlopen", return_value=self.apify_reply(items)), quiet():
+            with self.assertRaises(ValueError):
+                watch.apify_run(self.SRC, "t")
+
+    def test_a_run_with_no_loaded_page_is_an_error(self):
+        with mock.patch.object(watch.urllib.request, "urlopen",
+                               return_value=self.apify_reply([{"#error": "navigation failed"}])), quiet():
+            with self.assertRaises(ValueError):
+                watch.apify_run(self.SRC, "t")
+
+    def test_an_all_inline_page_is_not_an_error(self):
+        items = [{"url": "https://chatgpt.com/", "scripts": 0, "fetched": 0, "blocked": 0, "matches": ["gpt-6-sol"]}]
+        with mock.patch.object(watch.urllib.request, "urlopen", return_value=self.apify_reply(items)), quiet():
+            raw = watch.apify_run(self.SRC, "t")
+        self.assertEqual(json.loads(raw.decode("utf-8"))["matches"], ["gpt-6-sol"])
+
 
 class TestWebSourcePatterns(unittest.TestCase):
     """The real chatgpt-web/claude-web patterns against strings the first chatgpt.com snapshot brought."""
@@ -256,20 +280,22 @@ class TestWebSourcePatterns(unittest.TestCase):
         self.assertEqual(ids, ["gpt-4", "gpt-5.2.instant.access", "gpt-6-sol", "gpt-live-1", "o4-mini"])
 
     def test_chatgpt_web_catches_plan_rollout_strings(self):
-        # how a new plan shows up in the bundle: subscription UI strings and planType comparisons —
+        # how a new plan shows up in the bundle: subscription UI strings, planType comparisons, price points —
         # promax surfaced in chatgpt.com's code two hours before PlanType.ts
         ids = self.matches("chatgpt-web",
                            'chatgpt-subscription-complete-pro-max chatgpt-promax-intent-to-pay '
-                           'planType:"promax" plan_type="go" "plans.prolite" '
-                           '"chatgpt-free-plan" plans are great plan.id')
-        self.assertEqual(ids, ["chatgpt-free-plan", "chatgpt-promax-intent-to-pay",
+                           'planType:"promax" {"plan_type":"go"} "plans.prolite" '
+                           '"chatgpt-free-plan" plans are great plan.id '
+                           '"$20" "$200.00" "$2" v2.5')
+        self.assertEqual(ids, ["$20", "$200.00", "chatgpt-free-plan", "chatgpt-promax-intent-to-pay",
                                "chatgpt-subscription-complete-pro-max", "go", "id", "prolite", "promax"])
 
     def test_claude_web_keeps_model_ids_and_drops_assets(self):
         ids = self.matches("claude-web",
                            'claude-opus-5-5 claude_wafer_eap Claude-Haiku-4-5 claude.ai claude-app '
-                           'claude-main-a1b2c3.js claude-icon.webp planType:"ultra"')
-        self.assertEqual(ids, ["claude-app", "claude-haiku-4-5", "claude-opus-5-5", "claude_wafer_eap", "ultra"])
+                           'claude-main-a1b2c3.js claude-icon.webp planType:"ultra" "$200"')
+        self.assertEqual(ids, ["$200", "claude-app", "claude-haiku-4-5", "claude-opus-5-5",
+                               "claude_wafer_eap", "ultra"])
 
     def test_regex_extract_takes_the_first_matched_group(self):
         # a multi-group pattern used to put None into the id list for matches outside group 1

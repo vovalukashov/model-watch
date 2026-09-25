@@ -106,7 +106,8 @@ Code clients. The earliest and noisiest signal; the regex also catches crate nam
 and Claude web apps, read through a headless browser a few times a day. Strings land in those bundles days \
 before launch — the promax plan name surfaced in chatgpt.com's code two hours before any client knew it — but \
 a match can also be an internal codename, an experiment flag or dead code. A bare lowercase word (no gpt-/claude- \
-prefix) was captured next to a planType/plans key, so it is most likely a subscription plan, not a model.
+prefix) was captured next to a planType/plans key, so it is most likely a subscription plan, not a model. A $N or \
+€N string is a price point found in the code or on the pricing page: a new one usually means a new or repriced plan.
 
 Your knowledge of which models exist ends at your training cutoff, and this bot runs later than that. Take \
 novelty only from the novel list: never call a name new or old from memory. A name listed by several catalogs \
@@ -266,6 +267,12 @@ def apify_run(src: dict, token: str) -> bytes:
             continue
         pages.append({k: item.get(k) for k in ("url", "scripts", "fetched", "blocked")})
         matches.update(str(m) for m in item.get("matches") or [])
+    if not any(p.get("url") for p in pages):
+        raise ValueError("apify: ни одна страница не загрузилась — снимок не обновляю")
+    scripts = sum(p.get("scripts") or 0 for p in pages)
+    if scripts and not sum(p.get("fetched") or 0 for p in pages):
+        # CDN закрыл все бандлы разом: такой снимок — мусор, пусть лучше источник ошибкой отложится на интервал
+        raise ValueError(f"apify: все {scripts} бандлов заблокированы — снимок не обновляю")
     return json.dumps({"matches": sorted(matches), "pages": pages},
                       ensure_ascii=False, indent=1).encode("utf-8")
 
