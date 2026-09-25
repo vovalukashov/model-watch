@@ -91,9 +91,14 @@ chatgpt-pets		1
 chatgpt-plus-in-the-chatgpt-ios-app		1
 chatgpt-plus-intent-to-pay		1
 chatgpt-plus-promotions-referrals		1
+chatgpt-prefetch		1
 chatgpt-preview-cqyi41j9-css		1
 chatgpt-pro		1
 chatgpt-pro-intent-to-pay		1
+chatgpt-product-card		1
+chatgpt-product-card-description		1
+chatgpt-product-card-heading		1
+chatgpt-product-card-popover		1
 chatgpt-project-id		1
 chatgpt-release-notes		1
 chatgpt-render-logo-with-web-links		1
@@ -270,6 +275,7 @@ cohere-command-r-plus-08		1
 compvis-stable-diffusion-v1-4		1
 cxrreportgen		1
 dall-e-3		1
+data		1
 databricks-claude-3-7-sonnet		1
 databricks-claude-fable-5		1
 databricks-claude-fable-5-1		1
@@ -1020,4 +1026,5 @@ veo-3-1-fast-generate-preview		1
 veo-3-1-generate-001		1
 veo-3-1-generate-preview		1
 veo-3-1-lite-generate-preview		1
+viewbox		1
 xpersona-gpt-5-5		1

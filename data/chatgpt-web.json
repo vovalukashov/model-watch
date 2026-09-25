@@ -1,0 +1,18 @@
+{
+ "matches": [
+  "chatgpt-prefetch",
+  "chatgpt-product-card",
+  "chatgpt-product-card-description",
+  "chatgpt-product-card-heading",
+  "chatgpt-product-card-popover",
+  "viewBox"
+ ],
+ "pages": [
+  {
+   "blocked": 60,
+   "fetched": 0,
+   "scripts": 139,
+   "url": "https://chatgpt.com/"
+  }
+ ]
+}

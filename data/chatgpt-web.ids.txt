@@ -1,0 +1,6 @@
+chatgpt-prefetch
+chatgpt-product-card
+chatgpt-product-card-description
+chatgpt-product-card-heading
+chatgpt-product-card-popover
+viewbox
