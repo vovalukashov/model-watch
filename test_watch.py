@@ -117,6 +117,120 @@ class TestAiPrompt(unittest.TestCase):
                 self.assertIn(src["name"], watch.AI_SYSTEM_PROMPT)
 
 
+class TestKeyListExtract(unittest.TestCase):
+    """extract=key_list: how apify sources hand over the strings the actor's page function matched."""
+
+    def test_collects_strings_from_list_fields_anywhere_in_the_json(self):
+        raw = json.dumps({"matches": ["gpt-6-sol", "GPT-5.5", 7],
+                          "pages": [{"url": "https://chatgpt.com/", "matches": ["o4-mini", "gpt-6-sol"]}]})
+        src = {"kind": "json", "extract": "key_list", "key": "matches"}
+        self.assertEqual(watch.extract_ids(raw.encode("utf-8"), src)[1], ["7", "GPT-5.5", "gpt-6-sol", "o4-mini"])
+
+    def test_requires_json(self):
+        with self.assertRaises(ValueError):
+            watch.extract_ids(b"plain text", {"kind": "text", "extract": "key_list", "key": "matches"})
+
+
+class TestApify(unittest.TestCase):
+    SRC = {"name": "chatgpt-web", "kind": "apify", "url": "https://chatgpt.com/", "token": "${APIFY_TOKEN}",
+           "extract": "key_list", "key": "matches", "pattern": r"\b(gpt-[\w.\-]+)", "min_interval_hours": 6}
+    NOW = "2026-09-25T12:00Z"
+
+    def due(self, state=None, hours=6):
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            if state is not None:
+                (data / "chatgpt-web.apify-state.json").write_text(json.dumps(state), encoding="utf-8")
+            with mock.patch.object(watch, "DATA", data):
+                return watch.apify_due({**self.SRC, "min_interval_hours": hours}, at(self.NOW))
+
+    def test_due_without_a_state_file(self):
+        self.assertTrue(self.due())
+
+    def test_not_due_right_after_a_run(self):
+        self.assertFalse(self.due({"last_run": "2026-09-25T09:00Z"}))
+
+    def test_due_once_the_interval_has_passed(self):
+        self.assertTrue(self.due({"last_run": "2026-09-25T05:59Z"}))
+
+    def test_a_broken_state_file_means_due(self):
+        self.assertTrue(self.due({}))
+
+    def test_run_builds_the_actor_call_and_packs_matches(self):
+        items = [{"url": "https://chatgpt.com/", "scripts": 12, "fetched": 11, "blocked": 1,
+                  "matches": ["gpt-6-sol", "GPT-5.5"]},
+                 {"url": "https://chatgpt.com/", "scripts": 12, "fetched": 12, "blocked": 0,
+                  "matches": ["o4-mini"]}]
+        reply = mock.MagicMock()
+        reply.__enter__.return_value.read.return_value = json.dumps(items).encode("utf-8")
+        with mock.patch.object(watch.urllib.request, "urlopen", return_value=reply) as urlopen:
+            raw = watch.apify_run(self.SRC, "apify-token")
+        req = urlopen.call_args[0][0]
+        self.assertTrue(req.full_url.startswith(
+            "https://api.apify.com/v2/acts/apify~playwright-scraper/run-sync-get-dataset-items?"))
+        self.assertIn("token=apify-token", req.full_url)
+        body = json.loads(req.data.decode("utf-8"))
+        self.assertEqual(body["startUrls"], [{"url": "https://chatgpt.com/"}])
+        self.assertEqual(body["proxyConfiguration"]["apifyProxyGroups"], ["RESIDENTIAL"])
+        self.assertIn(json.dumps(self.SRC["pattern"]), body["pageFunction"])  # the site's regex, JSON-escaped
+        self.assertIn("'gi'", body["pageFunction"])
+        snapshot = json.loads(raw.decode("utf-8"))
+        self.assertEqual(snapshot["matches"], ["GPT-5.5", "gpt-6-sol", "o4-mini"])
+        self.assertEqual(snapshot["pages"][0]["blocked"], 1)
+        _, ids, _ = watch.extract_ids(raw, {**self.SRC, "lowercase": True})
+        self.assertEqual(ids, ["gpt-5.5", "gpt-6-sol", "o4-mini"])
+
+    def test_fetch_source_skips_without_a_token(self):
+        with mock.patch.dict("os.environ", {}, clear=True), quiet():
+            self.assertIsNone(watch.fetch_source(self.SRC, {}, at(self.NOW)))
+
+    def test_fetch_source_skips_inside_the_interval(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "chatgpt-web.apify-state.json").write_text('{"last_run": "2026-09-25T11:30Z"}\n',
+                                                                  encoding="utf-8")
+            with mock.patch.dict("os.environ", {"APIFY_TOKEN": "t"}, clear=True), \
+                    mock.patch.object(watch, "DATA", Path(d)), quiet(), \
+                    mock.patch.object(watch, "apify_run") as run:
+                self.assertIsNone(watch.fetch_source(self.SRC, {}, at(self.NOW)))
+        run.assert_not_called()
+
+    def test_fetch_source_runs_the_actor_and_marks_the_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.dict("os.environ", {"APIFY_TOKEN": "t"}, clear=True), \
+                    mock.patch.object(watch, "DATA", Path(d)), quiet(), \
+                    mock.patch.object(watch, "apify_run", return_value=b'{"matches": []}') as run:
+                self.assertEqual(watch.fetch_source(self.SRC, {}, at(self.NOW)), b'{"matches": []}')
+            run.assert_called_once_with(self.SRC, "t")
+            state = json.loads((Path(d) / "chatgpt-web.apify-state.json").read_text(encoding="utf-8"))
+            self.assertEqual(state["last_run"], self.NOW)
+
+    def test_a_failed_run_still_marks_the_state(self):
+        # a failed actor run cost money too; the interval caps retries the same way
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.dict("os.environ", {"APIFY_TOKEN": "t"}, clear=True), \
+                    mock.patch.object(watch, "DATA", Path(d)), quiet(), \
+                    mock.patch.object(watch, "apify_run",
+                                      side_effect=watch.urllib.error.URLError("payment required")):
+                with self.assertRaises(watch.urllib.error.URLError):
+                    watch.fetch_source(self.SRC, {}, at(self.NOW))
+                self.assertFalse(watch.apify_due(self.SRC, at("2026-09-25T13:00Z")))
+
+    def test_plain_sources_go_through_fetch(self):
+        with mock.patch.object(watch, "fetch", return_value=b"{}") as f:
+            out = watch.fetch_source({"name": "x", "url": "https://x"}, {"A": "b"}, at(self.NOW))
+        self.assertEqual(out, b"{}")
+        f.assert_called_once_with("https://x", {"A": "b"})
+
+    def test_apify_patterns_are_js_regexes(self):
+        # the page function compiles them with new RegExp(pattern, 'gi'): inline flag groups like (?i) break
+        # that, while (?:...), (?=...) and (?!...) are fine
+        import re
+        for src in json.loads(watch.SOURCES.read_text(encoding="utf-8")):
+            if src.get("kind") == "apify":
+                with self.subTest(source=src["name"]):
+                    self.assertIsNone(re.search(r"\(\?[a-z]", src["pattern"]))
+
+
 class TestSummarize(unittest.TestCase):
     def test_picks_price_and_context(self):
         entry = {"cost": {"input": 2.5, "output": 10}, "limit": {"context": 400000}, "name": "GPT-6 Sol"}

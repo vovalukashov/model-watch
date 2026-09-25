@@ -54,6 +54,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}   # без него источники chatgpt-web и claude-web пропускаются
           AI_PROXY_URL: ${{ vars.AI_PROXY_URL }}   # https://<ai-proxy domain>/api; unset = no AI summary
           # REPORT_ERRORS: "1"   # раскомментируй, если хочешь получать в Telegram и ошибки скачивания
         run: python watch.py ${{ inputs.ai_selftest && '--ai-selftest' || '' }}

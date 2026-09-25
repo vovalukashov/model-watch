@@ -89,5 +89,31 @@
     "alert_removed": false,
     "keep_full": false,
     "_comment": "Коммиты Claude Code: ловим новые model id и строки *-eap."
+  },
+  {
+    "name": "chatgpt-web",
+    "kind": "apify",
+    "url": "https://chatgpt.com/",
+    "token": "${APIFY_TOKEN}",
+    "extract": "key_list",
+    "key": "matches",
+    "pattern": "\\b((?:gpt|chatgpt|o[1-9]|codex)-[a-z0-9][\\w.\\-]{1,40})",
+    "lowercase": true,
+    "min_interval_hours": 6,
+    "keep_full": true,
+    "_comment": "Публичный JS chatgpt.com, читаемый через актор Apify (headless-браузер + residential-прокси): так в коде сайта нашли promax за два часа до PlanType.ts. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. Без секрета APIFY_TOKEN источник молча пропускается."
+  },
+  {
+    "name": "claude-web",
+    "kind": "apify",
+    "url": "https://claude.ai/",
+    "token": "${APIFY_TOKEN}",
+    "extract": "key_list",
+    "key": "matches",
+    "pattern": "\\b(claude[-_][a-z0-9][\\w.\\-_]{1,40})",
+    "lowercase": true,
+    "min_interval_hours": 6,
+    "keep_full": true,
+    "_comment": "Публичный JS claude.ai через Apify: новые model id и строки вида claude-wafer-eap до анонса."
   }
 ]

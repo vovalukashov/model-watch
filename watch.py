@@ -102,6 +102,10 @@ available to the owner now.
 OpenAI is preparing, not a model: promax, a tier above Pro, appeared here in September 2026.
 - feed-openai-codex, feed-anthropic-claude-code: names a regex found in recent commits of the Codex and Claude \
 Code clients. The earliest and noisiest signal; the regex also catches crate names, feature flags and branch names.
+- chatgpt-web, claude-web: names a regex found in the publicly served JavaScript of the ChatGPT and Claude web \
+apps, read through a headless browser a few times a day. Strings land in those bundles days before launch — the \
+promax plan name surfaced in chatgpt.com's code two hours before any client knew it — but a match can also be \
+an internal codename, an experiment flag or dead code.
 
 Your knowledge of which models exist ends at your training cutoff, and this bot runs later than that. Take \
 novelty only from the novel list: never call a name new or old from memory. A name listed by several catalogs \
@@ -149,6 +153,121 @@ def fetch(url: str, headers: dict[str, str]) -> bytes:
         return resp.read()
 
 
+# ---------- Apify (сайты, которые отвечают скрипту 403) ---------------------
+
+APIFY_API = "https://api.apify.com/v2"
+APIFY_ACTOR = "apify~playwright-scraper"  # headless Playwright + residential-прокси Apify
+APIFY_RUN_TIMEOUT = 240   # секунд на прогон актора; синхронный endpoint Apify всё равно обрывает на 300
+APIFY_INTERVAL = 6        # часов между прогонами одного источника, если в конфиге не сказано иначе
+
+# Выполняется в контексте актора: дожидается открытия страницы, собирает URL всех JS-бандлов,
+# скачивает их и гоняет регулярку по HTML и по каждому бандлу. __PATTERN__ подменяется на pattern
+# источника (JSON-литерал); синтаксис JS RegExp, флаг i добавляется здесь — поэтому (?i) в pattern нельзя.
+APIFY_PAGE_FUNCTION = r"""
+async function pageFunction(context) {
+    const { page, request } = context;
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    const scriptUrls = await page.evaluate(() => {
+        const urls = new Set();
+        for (const s of document.querySelectorAll('script[src]')) urls.add(s.src);
+        for (const e of performance.getEntriesByType('resource'))
+            if (e.initiatorType === 'script' || /\.m?js(\?|$)/.test(e.name)) urls.add(e.name);
+        return [...urls];
+    });
+    const pattern = new RegExp(__PATTERN__, 'gi');
+    const found = new Set();
+    const scan = (text) => {
+        pattern.lastIndex = 0;
+        let m;
+        while ((m = pattern.exec(text)) !== null && found.size < 500) found.add(m[1] || m[0]);
+    };
+    scan(await page.content());
+    let fetched = 0, blocked = 0;
+    for (const url of scriptUrls.slice(0, 60)) {
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) { blocked++; continue; }
+            scan(await resp.text());
+            fetched++;
+        } catch (e) { blocked++; }
+    }
+    return { url: request.url, scripts: scriptUrls.length, fetched, blocked, matches: [...found].sort() };
+}
+"""
+
+
+def apify_state_path(src: dict) -> Path:
+    return DATA / f"{src['name']}.apify-state.json"
+
+
+def apify_due(src: dict, now: datetime) -> bool:
+    """True, если прошлый прогон актора был дольше min_interval_hours назад (или его не было)."""
+    try:
+        state = json.loads(apify_state_path(src).read_text(encoding="utf-8"))
+        last = datetime.strptime(state["last_run"], TIME_FORMAT).replace(tzinfo=timezone.utc)
+    except (OSError, ValueError, KeyError):
+        return True
+    return now - last >= timedelta(hours=src.get("min_interval_hours", APIFY_INTERVAL))
+
+
+def apify_mark_run(src: dict, now: datetime) -> None:
+    """Запоминает прогон. Пишется и после неудачи: упавший прогон тоже стоил денег, и интервал
+    ограничивает повторные попытки."""
+    apify_state_path(src).write_text(json.dumps({"last_run": now.strftime(TIME_FORMAT)}) + "\n",
+                                     encoding="utf-8")
+
+
+def apify_run(src: dict, token: str) -> bytes:
+    """Синхронно гоняет актор по странице источника и пакует найденное в JSON-снимок
+    {"matches": [...], "pages": [...]} — его разбирает extract=key_list."""
+    urls = src.get("urls") or [src["url"]]
+    input_body = {
+        "startUrls": [{"url": u} for u in urls],
+        "pageFunction": APIFY_PAGE_FUNCTION.replace("__PATTERN__", json.dumps(src["pattern"])),
+        "proxyConfiguration": {"useApifyProxy": True,
+                               "apifyProxyGroups": src.get("proxy_groups", ["RESIDENTIAL"])},
+        "maxRequestsPerCrawl": len(urls),
+        "maxConcurrency": 1,
+        "pageLoadTimeoutSecs": 60,
+        "pageFunctionTimeoutSecs": APIFY_RUN_TIMEOUT,
+    }
+    query = urllib.parse.urlencode({"token": token, "timeout": APIFY_RUN_TIMEOUT, "memory": 2048})
+    req = urllib.request.Request(
+        f"{APIFY_API}/acts/{src.get('actor', APIFY_ACTOR)}/run-sync-get-dataset-items?{query}",
+        data=json.dumps(input_body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
+    )
+    with urllib.request.urlopen(req, timeout=APIFY_RUN_TIMEOUT + 60) as resp:
+        items = json.loads(resp.read().decode("utf-8"))
+    pages, matches = [], set()
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        pages.append({k: item.get(k) for k in ("url", "scripts", "fetched", "blocked")})
+        matches.update(str(m) for m in item.get("matches") or [])
+    return json.dumps({"matches": sorted(matches), "pages": pages},
+                      ensure_ascii=False, indent=1).encode("utf-8")
+
+
+def fetch_source(src: dict, headers: dict[str, str], now: datetime) -> bytes | None:
+    """Скачивает источник; None — если источник эту проверку пропускает (нет токена, интервал не вышел)."""
+    if src.get("kind") != "apify":
+        return fetch(src["url"], headers)
+    token = expand_env(src.get("token", ""))
+    if not token:
+        print(f"[{src['name']}] пропущен: не задан секрет APIFY_TOKEN")
+        return None
+    if not apify_due(src, now):
+        print(f"[{src['name']}] пропущен: прогон Apify был меньше "
+              f"{src.get('min_interval_hours', APIFY_INTERVAL)} ч назад")
+        return None
+    try:
+        raw = apify_run(src, token)
+    finally:
+        apify_mark_run(src, now)
+    return raw
+
+
 def walk_values(obj, key: str):
     """Рекурсивно собирает значения всех полей с именем key."""
     if isinstance(obj, dict):
@@ -170,12 +289,13 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     Режимы извлечения (поле "extract"):
       regex     — все совпадения "pattern" в тексте;
       key       — значения всех полей "key" (по умолчанию "id") в JSON;
+      key_list  — элементы списков в полях "key" (так apify-источники отдают найденные строки);
       top_keys  — ключи верхнего уровня JSON-объекта.
     """
     kind = src.get("kind", "json")
     mode = src.get("extract", "regex" if kind == "text" else "key")
 
-    if kind == "json":
+    if kind in ("json", "apify"):  # apify-источник отдаёт JSON-снимок, собранный актором
         parsed = json.loads(raw.decode("utf-8"))
         text = json.dumps(parsed, ensure_ascii=False, indent=1, sort_keys=True)
     else:
@@ -189,6 +309,14 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
         if parsed is None:
             raise ValueError("extract=key требует kind=json")
         found = list(walk_values(parsed, src.get("key", "id")))
+    elif mode == "key_list":
+        if parsed is None:
+            raise ValueError("extract=key_list требует kind=json")
+        found = []
+        for d in walk_dicts(parsed):
+            v = d.get(src.get("key", "id"))
+            if isinstance(v, list):
+                found += [str(x) for x in v if isinstance(x, (str, int, float))]
     elif mode == "top_keys":
         if not isinstance(parsed, dict):
             raise ValueError("extract=top_keys требует JSON-объект на верхнем уровне")
@@ -741,7 +869,9 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         try:
-            raw = fetch(src["url"], headers)
+            raw = fetch_source(src, headers, now)
+            if raw is None:
+                continue
             text, ids, parsed = extract_ids(raw, src)
         except (urllib.error.URLError, ValueError, json.JSONDecodeError, KeyError) as e:
             msg = f"[{name}] ошибка: {e}"
