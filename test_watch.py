@@ -296,9 +296,18 @@ class TestWebSourcePatterns(unittest.TestCase):
     def test_claude_web_keeps_model_ids_and_drops_assets(self):
         ids = self.matches("claude-web",
                            'claude-opus-5-5 claude_wafer_eap Claude-Haiku-4-5 claude.ai claude-app '
-                           'claude-main-a1b2c3.js claude-icon.webp planType:"ultra" "$200"')
-        self.assertEqual(ids, ["$200", "claude-app", "claude-haiku-4-5", "claude-opus-5-5",
-                               "claude_wafer_eap", "ultra"])
+                           'claude-main-a1b2c3.js claude-icon.webp '
+                           'Claude-50e62f90a2c85243eef42913398f7c8f1534abef.dmg '
+                           'planType:"ultra" "$200"')
+        self.assertEqual(ids, ["$200", "claude-app", "claude-haiku-4-5", "claude-icon",
+                               "claude-opus-5-5", "claude_wafer_eap", "ultra"])
+
+    def test_claude_web_splits_dot_joined_flag_lists(self):
+        # claude.ai serves feature flags as one dot-joined string; the match must stop at the first dot,
+        # otherwise the whole list becomes one mutating blob that alerts on every flag change
+        ids = self.matches("claude-web",
+                           "claude_ai_email_prompt_id_prefill.proj-chalk-telemetry.cai_tender_island")
+        self.assertEqual(ids, ["claude_ai_email_prompt_id_prefill"])
 
     def test_regex_extract_takes_the_first_matched_group(self):
         # a multi-group pattern used to put None into the id list for matches outside group 1
