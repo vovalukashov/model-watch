@@ -61,6 +61,15 @@
     "_comment": "Официальный список Anthropic. Пропускается, если секрет ANTHROPIC_API_KEY не задан."
   },
   {
+    "name": "chatgpt-plans",
+    "url": "https://raw.githubusercontent.com/openai/codex/main/codex-rs/app-server-protocol/schema/typescript/PlanType.ts",
+    "kind": "text",
+    "extract": "regex",
+    "pattern": "\"([a-z0-9_]+)\"",
+    "keep_full": false,
+    "_comment": "ChatGPT plans the Codex client knows, generated from its PlanType enum. New plans land here before launch: prolite on 2026-04-11, promax (a tier above Pro) on 2026-09-25 at 00:20 UTC, two hours after it surfaced in chatgpt.com's code."
+  },
+  {
     "name": "feed-openai-codex",
     "url": "https://github.com/openai/codex/commits/main.atom",
     "kind": "text",

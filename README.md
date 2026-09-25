@@ -118,6 +118,10 @@ OIDC-токеном GitHub (`id-token: write`), а прокси идёт в AI G
 - `PlaygroundConfig.json` у Azure — внутренний файл фронтенда, он может переехать
   или начать отдавать 403. Тогда просто заменишь URL: скрипт при ошибке
   скачивания пропускает источник, остальные работают.
+- `chatgpt-plans` читает `PlanType.ts` из репозитория Codex — сгенерированный список тарифов ChatGPT,
+  которые знает клиент. Если Codex перенесёт файл, источник начнёт падать с 404, и URL надо будет поменять.
+  Сам chatgpt.com, где такие строки видно раньше всего, скрипту отвечает 403 с проверкой Cloudflare:
+  обходить её вотчер не будет.
 - Расписание GitHub Actions на деле срабатывало раз в 3–5 часов вместо 10 минут, поэтому ритм держит
   `tick.yml`. Каждый tick ждёт 10 минут на таймере окружения `tick` (раннер при этом не занят, ожидание
   не тарифицируется), потом запускает `watch.yml` и следующий tick. Расписания в обоих workflow —
@@ -153,6 +157,9 @@ OIDC-токеном GitHub (`id-token: write`), а прокси идёт в AI G
 Репозитории (кнопка Watch → Custom → Releases + Commits или Atom-фид
 `https://github.com/<owner>/<repo>/commits/main.atom`):
 - `openai/codex`, `openai/openai-python` — там всплывали `gpt-6-astra` и имена Sol/Terra/Luna.
+- `openai/codex`, файл `codex-rs/app-server-protocol/schema/typescript/PlanType.ts` — тарифы ChatGPT
+  (уже в `sources.json` как `chatgpt-plans`). 25.09 в 00:20 UTC там появился `promax`, тариф выше Pro, —
+  через два часа после того, как его нашли в коде chatgpt.com. С февраля файл дал 7 новых тарифов.
 - `anthropics/claude-code`, `anthropics/anthropic-sdk-python` — новые model id и строки `*-eap`.
 - `github/docs`, путь `content/copilot/reference/ai-models/` — Copilot добавляет модели в документацию заранее.
 - `BerriAI/litellm` — файл цен и контекстов (уже в `sources.json`).
