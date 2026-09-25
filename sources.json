@@ -101,7 +101,7 @@
     "pattern": "\\b((?:gpt|o[1-9])-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)|\\b(chatgpt-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)|\\b(?:plan[-_ ]?type|plans?)[\"'.:=\\s]*[\"'.:=][\"'.:=\\s]*[\"']?([a-z][a-z0-9_]{1,20})|([$€£]\\d{2,}(?:\\.\\d{2})?)",
     "exclude": "\\.(js|css|webp|png|svg|dmg|exe|msi|zip|apk|ipa)$|[-_][0-9a-f]{6,}$",
     "lowercase": true,
-    "min_interval_hours": 6,
+    "min_interval_hours": 24,
     "keep_full": true,
     "_comment": "Публичный JS chatgpt.com через актор Apify (headless-браузер + residential-прокси). Четыре формы строк: model id (gpt-*, o*), chatgpt-* — так выглядит раскатка тарифа (chatgpt-subscription-complete-pro-max), имя рядом с planType/plans — так нашли promax за два часа до PlanType.ts, и ценовые строки ($20, €25) — новая цена = новый или изменённый тариф. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. codex-* нарочно не ловим: его покрывает лента коммитов. Без секрета APIFY_TOKEN источник молча пропускается."
   },
@@ -116,7 +116,7 @@
     "pattern": "\\b(claude[-_][a-z0-9][\\w]*(?:[-_][\\w]+)*)|\\b(?:plan[-_ ]?type|plans?)[\"'.:=\\s]*[\"'.:=][\"'.:=\\s]*[\"']?([a-z][a-z0-9_]{1,20})|([$€£]\\d{2,}(?:\\.\\d{2})?)",
     "exclude": "\\.(js|css|webp|png|svg|dmg|exe|msi|zip|apk|ipa)$|[-_][0-9a-f]{6,}$",
     "lowercase": true,
-    "min_interval_hours": 6,
+    "min_interval_hours": 24,
     "keep_full": true,
     "_comment": "Публичный JS claude.ai через Apify: model id, флаги вида claude_ai_*, тарифы и цены. Точки в сегментах нарочно не ловим: claude.ai отдаёт фича-флаги одной строкой через точку, и без этого ограничения весь список слипается в один мутирующий блоб."
   }
