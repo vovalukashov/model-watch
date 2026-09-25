@@ -102,10 +102,11 @@ available to the owner now.
 OpenAI is preparing, not a model: promax, a tier above Pro, appeared here in September 2026.
 - feed-openai-codex, feed-anthropic-claude-code: names a regex found in recent commits of the Codex and Claude \
 Code clients. The earliest and noisiest signal; the regex also catches crate names, feature flags and branch names.
-- chatgpt-web, claude-web: names a regex found in the publicly served JavaScript of the ChatGPT and Claude web \
-apps, read through a headless browser a few times a day. Strings land in those bundles days before launch — the \
-promax plan name surfaced in chatgpt.com's code two hours before any client knew it — but a match can also be \
-an internal codename, an experiment flag or dead code.
+- chatgpt-web, claude-web: model and plan names a regex found in the publicly served JavaScript of the ChatGPT \
+and Claude web apps, read through a headless browser a few times a day. Strings land in those bundles days \
+before launch — the promax plan name surfaced in chatgpt.com's code two hours before any client knew it — but \
+a match can also be an internal codename, an experiment flag or dead code. A bare lowercase word (no gpt-/claude- \
+prefix) was captured next to a planType/plans key, so it is most likely a subscription plan, not a model.
 
 Your knowledge of which models exist ends at your training cutoff, and this bot runs later than that. Take \
 novelty only from the novel list: never call a name new or old from memory. A name listed by several catalogs \
@@ -179,7 +180,10 @@ async function pageFunction(context) {
     const scan = (text) => {
         pattern.lastIndex = 0;
         let m;
-        while ((m = pattern.exec(text)) !== null && found.size < 500) found.add(m[1] || m[0]);
+        while ((m = pattern.exec(text)) !== null && found.size < 500) {
+            const v = m.slice(1).find(g => g !== undefined);  // первая совпавшая группа, как в extract_ids
+            found.add(v !== undefined ? v : m[0]);
+        }
     };
     scan(await page.content());
     let fetched = 0, blocked = 0;
@@ -321,7 +325,10 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
 
     if mode == "regex":
         pattern = re.compile(src["pattern"])
-        found = [m.group(1) if m.groups() else m.group(0) for m in pattern.finditer(text)]
+        found = []
+        for m in pattern.finditer(text):
+            group = next((g for g in m.groups() if g is not None), None)  # первая совпавшая группа
+            found.append(group if group is not None else m.group(0))
     elif mode == "key":
         if parsed is None:
             raise ValueError("extract=key требует kind=json")

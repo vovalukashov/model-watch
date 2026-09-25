@@ -97,12 +97,12 @@
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
-    "pattern": "\\b((?:gpt|o[1-9])-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)",
+    "pattern": "\\b(?:((?:gpt|o[1-9])-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)|(chatgpt-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)|(?:plan[-_ ]?type|plans?)[\"'.:=]\\s*[\"']?([a-z][a-z0-9_]{1,20}))",
     "exclude": "\\.(js|css|webp|png|svg)$",
     "lowercase": true,
     "min_interval_hours": 6,
     "keep_full": true,
-    "_comment": "Публичный JS chatgpt.com, читаемый через актор Apify (headless-браузер + residential-прокси): так в коде сайта нашли promax за два часа до PlanType.ts. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. Префиксы chatgpt-/codex- нарочно не ловим: это флаги и имена чанков, а не модели; codex-* покрывает лента коммитов. Без секрета APIFY_TOKEN источник молча пропускается."
+    "_comment": "Публичный JS chatgpt.com через актор Apify (headless-браузер + residential-прокси). Три формы строк: model id (gpt-*, o*), chatgpt-* — так выглядит раскатка тарифа (chatgpt-subscription-complete-pro-max), и контекст planType:\"...\"/plans.___ — так в коде сайта нашли promax за два часа до PlanType.ts. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. codex-* нарочно не ловим: его покрывает лента коммитов. Без секрета APIFY_TOKEN источник молча пропускается."
   },
   {
     "name": "claude-web",
@@ -112,7 +112,7 @@
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
-    "pattern": "\\b(claude[-_][a-z0-9][\\w]*(?:[\\.\\-_][\\w]+)*)",
+    "pattern": "\\b(?:(claude[-_][a-z0-9][\\w]*(?:[\\.\\-_][\\w]+)*)|(?:plan[-_ ]?type|plans?)[\"'.:=]\\s*[\"']?([a-z][a-z0-9_]{1,20}))",
     "exclude": "\\.(js|css|webp|png|svg)$",
     "lowercase": true,
     "min_interval_hours": 6,

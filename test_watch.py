@@ -252,15 +252,29 @@ class TestWebSourcePatterns(unittest.TestCase):
     def test_chatgpt_web_keeps_models_and_drops_ui_noise(self):
         ids = self.matches("chatgpt-web",
                            "GPT-5.2.instant.access gpt-6-sol GPT-Live-1 o4-mini GPT-4. "
-                           "chatgpt-account chatgpt-go-intent-to-pay chatgpt-dv4fkqfn.js "
-                           "codex-canva codex-chatgpt-version-imoe7dyk.js")
+                           "chatgpt-dv4fkqfn.js codex-canva codex-chatgpt-version-imoe7dyk.js")
         self.assertEqual(ids, ["gpt-4", "gpt-5.2.instant.access", "gpt-6-sol", "gpt-live-1", "o4-mini"])
+
+    def test_chatgpt_web_catches_plan_rollout_strings(self):
+        # how a new plan shows up in the bundle: subscription UI strings and planType comparisons —
+        # promax surfaced in chatgpt.com's code two hours before PlanType.ts
+        ids = self.matches("chatgpt-web",
+                           'chatgpt-subscription-complete-pro-max chatgpt-promax-intent-to-pay '
+                           'planType:"promax" plan_type="go" "plans.prolite" '
+                           '"chatgpt-free-plan" plans are great plan.id')
+        self.assertEqual(ids, ["chatgpt-free-plan", "chatgpt-promax-intent-to-pay",
+                               "chatgpt-subscription-complete-pro-max", "go", "id", "prolite", "promax"])
 
     def test_claude_web_keeps_model_ids_and_drops_assets(self):
         ids = self.matches("claude-web",
-                           "claude-opus-5-5 claude_wafer_eap Claude-Haiku-4-5 claude.ai claude-app "
-                           "claude-main-a1b2c3.js claude-icon.webp")
-        self.assertEqual(ids, ["claude-app", "claude-haiku-4-5", "claude-opus-5-5", "claude_wafer_eap"])
+                           'claude-opus-5-5 claude_wafer_eap Claude-Haiku-4-5 claude.ai claude-app '
+                           'claude-main-a1b2c3.js claude-icon.webp planType:"ultra"')
+        self.assertEqual(ids, ["claude-app", "claude-haiku-4-5", "claude-opus-5-5", "claude_wafer_eap", "ultra"])
+
+    def test_regex_extract_takes_the_first_matched_group(self):
+        # a multi-group pattern used to put None into the id list for matches outside group 1
+        src = {"kind": "text", "extract": "regex", "pattern": r"(?:foo-(\w+)|bar-(\w+))"}
+        self.assertEqual(watch.extract_ids(b"foo-one bar-two", src)[1], ["one", "two"])
 
     def test_exclude_drops_asset_filenames(self):
         src = {"kind": "text", "extract": "regex", "pattern": r"\b(gpt-[\w.\-]+)", "exclude": r"\.js$"}
