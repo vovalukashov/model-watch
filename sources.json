@@ -108,6 +108,7 @@
     "name": "claude-web",
     "kind": "apify",
     "url": "https://claude.ai/",
+    "urls": ["https://claude.ai/", "https://claude.ai/new", "https://claude.ai/pricing"],
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
