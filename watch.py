@@ -237,8 +237,12 @@ def apify_run(src: dict, token: str) -> bytes:
         data=json.dumps(input_body).encode("utf-8"),
         headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
     )
-    with urllib.request.urlopen(req, timeout=APIFY_RUN_TIMEOUT + 60) as resp:
-        items = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=APIFY_RUN_TIMEOUT + 60) as resp:
+            items = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:  # Apify пишет причину в тело ответа — без неё 400 не отладить
+        detail = e.read().decode("utf-8", errors="replace")[:300]
+        raise ValueError(f"apify HTTP {e.code}: {detail}") from e
     pages, matches = [], set()
     for item in items if isinstance(items, list) else []:
         if not isinstance(item, dict):
@@ -331,6 +335,11 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     if only:
         only_re = re.compile(only)
         found = [f for f in found if only_re.search(f)]
+
+    exclude = src.get("exclude")
+    if exclude:
+        exclude_re = re.compile(exclude)
+        found = [f for f in found if not exclude_re.search(f)]
 
     ids = sorted(set(found))
     return text, ids, parsed

@@ -230,6 +230,42 @@ class TestApify(unittest.TestCase):
                 with self.subTest(source=src["name"]):
                     self.assertIsNone(re.search(r"\(\?[a-z]", src["pattern"]))
 
+    def test_http_error_carries_apifys_message(self):
+        err = watch.urllib.error.HTTPError("https://api.apify.com/x", 400, "Bad Request", {},
+                                           io.BytesIO(b'{"error":{"message":"bad input"}}'))
+        with mock.patch.object(watch.urllib.request, "urlopen", side_effect=err), quiet():
+            with self.assertRaises(ValueError) as ctx:
+                watch.apify_run(self.SRC, "t")
+        self.assertIn("bad input", str(ctx.exception))
+
+
+class TestWebSourcePatterns(unittest.TestCase):
+    """The real chatgpt-web/claude-web patterns against strings the first chatgpt.com snapshot brought."""
+
+    def matches(self, name, text):
+        src = next(s for s in json.loads(watch.SOURCES.read_text(encoding="utf-8")) if s["name"] == name)
+        # the actor's RegExp runs with the i flag while extract_ids compiles without flags,
+        # so feed the text already lowercased — same matches for these patterns
+        return watch.extract_ids(text.lower().encode("utf-8"),
+                                 {**src, "kind": "text", "extract": "regex"})[1]
+
+    def test_chatgpt_web_keeps_models_and_drops_ui_noise(self):
+        ids = self.matches("chatgpt-web",
+                           "GPT-5.2.instant.access gpt-6-sol GPT-Live-1 o4-mini GPT-4. "
+                           "chatgpt-account chatgpt-go-intent-to-pay chatgpt-dv4fkqfn.js "
+                           "codex-canva codex-chatgpt-version-imoe7dyk.js")
+        self.assertEqual(ids, ["gpt-4", "gpt-5.2.instant.access", "gpt-6-sol", "gpt-live-1", "o4-mini"])
+
+    def test_claude_web_keeps_model_ids_and_drops_assets(self):
+        ids = self.matches("claude-web",
+                           "claude-opus-5-5 claude_wafer_eap Claude-Haiku-4-5 claude.ai claude-app "
+                           "claude-main-a1b2c3.js claude-icon.webp")
+        self.assertEqual(ids, ["claude-app", "claude-haiku-4-5", "claude-opus-5-5", "claude_wafer_eap"])
+
+    def test_exclude_drops_asset_filenames(self):
+        src = {"kind": "text", "extract": "regex", "pattern": r"\b(gpt-[\w.\-]+)", "exclude": r"\.js$"}
+        self.assertEqual(watch.extract_ids(b"gpt-5 gpt-chunk-a1b2.js", src)[1], ["gpt-5"])
+
 
 class TestSummarize(unittest.TestCase):
     def test_picks_price_and_context(self):

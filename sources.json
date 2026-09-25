@@ -97,11 +97,12 @@
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
-    "pattern": "\\b((?:gpt|chatgpt|o[1-9]|codex)-[a-z0-9][\\w.\\-]{1,40})",
+    "pattern": "\\b((?:gpt|o[1-9])-[a-z0-9][\\w]*(?:[\\.\\-][\\w]+)*)",
+    "exclude": "\\.(js|css|webp|png|svg)$",
     "lowercase": true,
     "min_interval_hours": 6,
     "keep_full": true,
-    "_comment": "Публичный JS chatgpt.com, читаемый через актор Apify (headless-браузер + residential-прокси): так в коде сайта нашли promax за два часа до PlanType.ts. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. Без секрета APIFY_TOKEN источник молча пропускается."
+    "_comment": "Публичный JS chatgpt.com, читаемый через актор Apify (headless-браузер + residential-прокси): так в коде сайта нашли promax за два часа до PlanType.ts. pattern — синтаксис JS RegExp, (?i) нельзя: флаг i добавляет актор. Префиксы chatgpt-/codex- нарочно не ловим: это флаги и имена чанков, а не модели; codex-* покрывает лента коммитов. Без секрета APIFY_TOKEN источник молча пропускается."
   },
   {
     "name": "claude-web",
@@ -110,7 +111,8 @@
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
-    "pattern": "\\b(claude[-_][a-z0-9][\\w.\\-_]{1,40})",
+    "pattern": "\\b(claude[-_][a-z0-9][\\w]*(?:[\\.\\-_][\\w]+)*)",
+    "exclude": "\\.(js|css|webp|png|svg)$",
     "lowercase": true,
     "min_interval_hours": 6,
     "keep_full": true,
