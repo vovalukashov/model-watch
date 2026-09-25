@@ -93,8 +93,7 @@
   {
     "name": "chatgpt-web",
     "kind": "apify",
-    "url": "https://chatgpt.com/",
-    "urls": ["https://chatgpt.com/", "https://chatgpt.com/pricing"],
+    "url": "https://chatgpt.com/pricing",
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
@@ -109,7 +108,6 @@
     "name": "claude-web",
     "kind": "apify",
     "url": "https://claude.ai/",
-    "urls": ["https://claude.ai/", "https://claude.ai/new"],
     "token": "${APIFY_TOKEN}",
     "extract": "key_list",
     "key": "matches",
