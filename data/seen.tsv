@@ -41,6 +41,7 @@ auto		1
 auto-beta		1
 bodybuilder		1
 bria-2-3-fast		1
+business		1
 chatgpt-4o-latest		1
 chatgpt-image-latest		1
 claude-3-5-haiku		1
@@ -209,6 +210,13 @@ duo-chat-gpt-6-astra		1
 duo-chat-gpt-6-luna	2026-09-24T01:07Z	1
 duo-chat-gpt-6-sol	2026-09-24T01:07Z	1
 edit		1
+edu		1
+edu-plus		1
+edu-pro		1
+ent26		1
+enterprise		1
+enterprise-cbp-automation		1
+enterprise-cbp-usage-based		1
 facebook-deit-base-patch16-224		1
 fastgpt		1
 flux-1-1-pro		1
@@ -344,6 +352,7 @@ gemma-3-4b-it		1
 gemma-4-26b-a4b-it		1
 gemma-4-31b-claude-4-6-opus-reasoning-distilled		1
 gemma-4-31b-it		1
+go		1
 google-vit-base-patch16-224		1
 gpt-3-5-turbo		1
 gpt-3-5-turbo-16k		1
@@ -753,6 +762,10 @@ phi-4		1
 phi-4-mini-instruct		1
 phi-4-mini-reasoning		1
 phi-4-reasoning		1
+plus		1
+pro		1
+prolite		1
+promax		1
 prompt-guard		1
 qwen3-32b		1
 runwayml-stable-diffusion-inpainting		1
@@ -761,6 +774,8 @@ salesforce-blip-2-opt-2-7b-image-to-text		1
 salesforce-blip-2-opt-2-7b-vqa		1
 salesforce-blip-image-captioning-base		1
 salesforce-blip-vqa-base		1
+self-serve-business-prolite		1
+self-serve-business-usage-based		1
 sora		1
 sora-2		1
 stabilityai-stable-diffusion-2-1		1
@@ -768,9 +783,11 @@ stabilityai-stable-diffusion-2-inpainting		1
 stable-diffusion-3-5-large		1
 stable-image-core		1
 stable-image-ultra		1
+team		1
 text-to-image		1
 tiiuae-falcon-40b		1
 tsuzumi-7b		1
+unknown		1
 veo-2-0-generate-001		1
 veo-3-1-fast-generate-001		1
 veo-3-1-fast-generate-preview		1
