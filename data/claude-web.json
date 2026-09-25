@@ -1,0 +1,38 @@
+{
+ "matches": [
+  "$100",
+  "$17",
+  "$20",
+  "$200",
+  "Claude-f",
+  "claude-ai",
+  "claude-ai-pending-login-email",
+  "claude-approvals",
+  "claude-code",
+  "claude-conversation-store",
+  "claude-for-microsoft-365",
+  "claude-for-slack",
+  "claude-history",
+  "claude-in-chrome",
+  "claude-response",
+  "claude-science",
+  "claude-security",
+  "claude-settings",
+  "claude_ogimage.png",
+  "data"
+ ],
+ "pages": [
+  {
+   "blocked": 1,
+   "fetched": 9,
+   "scripts": 10,
+   "url": "https://claude.ai/"
+  },
+  {
+   "blocked": 1,
+   "fetched": 6,
+   "scripts": 7,
+   "url": "https://claude.ai/new"
+  }
+ ]
+}
