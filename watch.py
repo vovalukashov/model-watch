@@ -166,7 +166,7 @@ APIFY_INTERVAL = 6        # часов между прогонами одног�
 APIFY_PAGE_FUNCTION = r"""
 async function pageFunction(context) {
     const { page, request } = context;
-    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
     const scriptUrls = await page.evaluate(() => {
         const urls = new Set();
         for (const s of document.querySelectorAll('script[src]')) urls.add(s.src);
@@ -183,14 +183,22 @@ async function pageFunction(context) {
     };
     scan(await page.content());
     let fetched = 0, blocked = 0;
-    for (const url of scriptUrls.slice(0, 60)) {
-        try {
-            const resp = await fetch(url);
-            if (!resp.ok) { blocked++; continue; }
-            scan(await resp.text());
-            fetched++;
-        } catch (e) { blocked++; }
-    }
+    // every fetch is capped and a global deadline leaves headroom under the actor's run timeout:
+    // one hanging bundle must not sink the whole run (claude.ai did exactly that)
+    const deadline = Date.now() + 150000;
+    const queue = scriptUrls.slice(0, 60);
+    const worker = async () => {
+        while (queue.length && Date.now() < deadline) {
+            const url = queue.shift();
+            try {
+                const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                if (!resp.ok) { blocked++; continue; }
+                scan(await resp.text());
+                fetched++;
+            } catch (e) { blocked++; }
+        }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
     return { url: request.url, scripts: scriptUrls.length, fetched, blocked, matches: [...found].sort() };
 }
 """
