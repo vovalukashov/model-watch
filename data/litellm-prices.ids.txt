@@ -350,11 +350,15 @@ azure_ai/gpt-6-sol
 azure_ai/gpt-chat-latest
 azure_ai/gpt-image-2
 azure_ai/gpt-oss-120b
+azure_ai/grok-3
+azure_ai/grok-3-mini
 azure_ai/grok-4
 azure_ai/grok-4-1-fast-non-reasoning
 azure_ai/grok-4-1-fast-reasoning
 azure_ai/grok-4-20-non-reasoning
 azure_ai/grok-4-20-reasoning
+azure_ai/grok-4-fast-non-reasoning
+azure_ai/grok-4-fast-reasoning
 azure_ai/grok-4.3
 azure_ai/grok-4.6
 azure_ai/grok-code-fast-1
@@ -1604,6 +1608,7 @@ xai/grok-code-fast-1-0825
 xai/grok-imagine-image
 xai/grok-imagine-image-2.0
 xai/grok-imagine-image-2026-03-02
+xai/grok-imagine-image-pro
 xai/grok-imagine-image-quality
 xai/grok-imagine-image-quality-20260403
 xai/grok-imagine-image-quality-latest
