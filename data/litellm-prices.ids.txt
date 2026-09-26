@@ -1384,6 +1384,7 @@ replicate/openai/gpt-oss-120b
 replicate/openai/gpt-oss-20b
 replicate/xai/grok-4
 runwayml/gemini_omni_flash
+sail/openai/gpt-oss-120b
 sambanova/gpt-oss-120b
 scaleway/openai/gpt-oss-120b
 snowflake/claude-3-5-sonnet
