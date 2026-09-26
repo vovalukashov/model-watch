@@ -500,6 +500,7 @@ databricks/databricks-claude-opus-4-6
 databricks/databricks-claude-opus-4-7
 databricks/databricks-claude-opus-4-8
 databricks/databricks-claude-opus-5
+databricks/databricks-claude-opus-5-5
 databricks/databricks-claude-sonnet-4
 databricks/databricks-claude-sonnet-4-1
 databricks/databricks-claude-sonnet-4-5
