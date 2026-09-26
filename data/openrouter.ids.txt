@@ -1,4 +1,3 @@
-anthropic/claude-3-haiku
 anthropic/claude-fable-5
 anthropic/claude-fable-5.1
 anthropic/claude-fable-5.1:batch
