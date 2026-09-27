@@ -405,6 +405,7 @@ claude-fable-5-1		1
 claude-fable-latest		1
 claude-failed-first-turn-prompt	2026-09-25T13:53Z	1
 claude-for-chrome	2026-09-25T13:53Z	1
+claude-for-chrome-cowork	2026-09-27T14:11Z	1
 claude-for-excel	2026-09-25T13:53Z	1
 claude-for-microsoft-365		1
 claude-for-powerpoint	2026-09-25T13:53Z	1
@@ -439,6 +440,7 @@ claude-invite-link-resume-offer	2026-09-25T13:53Z	1
 claude-is-providing-incorrect-or-misleading-responses-what-s-going-on	2026-09-25T13:53Z	1
 claude-issuer	2026-09-25T13:53Z	1
 claude-light	2026-09-25T13:53Z	1
+claude-login	2026-09-27T14:11Z	1
 claude-login-v2		1
 claude-login-v2-mp4	2026-09-25T13:53Z	1
 claude-max	2026-09-25T13:53Z	1
@@ -1194,6 +1196,7 @@ in-openai-gpt-5-6-luna		1
 in-openai-gpt-5-6-terra		1
 jais-30b-chat		1
 k5		1
+ke	2026-09-27T14:11Z	1
 kimi-k2-5		1
 kimi-k2-6		1
 kimi-k2-7-code		1
@@ -1243,6 +1246,7 @@ mai-image-2-6		1
 mai-image-2-6-flash		1
 mai-image-2e		1
 mai-thinking-1		1
+max-code-point	2026-09-27T14:11Z	1
 me		1
 medimageparse		1
 meta-llama-3-1-405b-instruct		1
@@ -1406,6 +1410,7 @@ veo-3-1-lite-generate-preview		1
 viewbox		1
 vl	2026-09-27T14:00Z	1
 void		1
+vs	2026-09-27T14:11Z	1
 wc		1
 wi		1
 write		1
