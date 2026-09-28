@@ -25,6 +25,7 @@ anthropic/claude-sonnet-4.6
 anthropic/claude-sonnet-4.6:batch
 anthropic/claude-sonnet-5
 anthropic/claude-sonnet-5.5
+anthropic/claude-sonnet-5.5:batch
 anthropic/claude-sonnet-5:batch
 google/gemini-2.5-flash
 google/gemini-2.5-flash-image
