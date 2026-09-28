@@ -948,6 +948,7 @@ global.openai.gpt-6-astra
 global.openai.gpt-6-luna
 global.openai.gpt-6-sol
 global.xai.grok-4.6
+global.xai.grok-4.7
 gmi/anthropic/claude-opus-4
 gmi/anthropic/claude-opus-4.5
 gmi/anthropic/claude-sonnet-4
@@ -1463,6 +1464,7 @@ us.openai.gpt-6-astra
 us.openai.gpt-6-luna
 us.openai.gpt-6-sol
 us.xai.grok-4.6
+us.xai.grok-4.7
 vercel_ai_gateway/anthropic/claude-3-5-sonnet
 vercel_ai_gateway/anthropic/claude-3-5-sonnet-20241022
 vercel_ai_gateway/anthropic/claude-3-7-sonnet
@@ -1580,6 +1582,7 @@ vertex_ai/xai/grok-4.6
 wandb/openai/gpt-oss-120b
 wandb/openai/gpt-oss-20b
 watsonx/openai/gpt-oss-120b
+xai.grok-4.7
 xai/grok-4.20
 xai/grok-4.20-0309
 xai/grok-4.20-0309-non-reasoning
