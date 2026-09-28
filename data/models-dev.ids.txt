@@ -121,6 +121,7 @@ anthropic/claude-sonnet-4:thinking:64000
 anthropic/claude-sonnet-4:thinking:8192
 anthropic/claude-sonnet-5
 anthropic/claude-sonnet-5-free
+anthropic/claude-sonnet-5.5
 anthropic/claude-sonnet-5:thinking
 anthropic/claude-sonnet-latest
 apac.anthropic.claude-sonnet-4-20250514-v1:0
