@@ -162,9 +162,6 @@ azure-anthropic/claude-opus-4-7
 azure-anthropic/claude-opus-4-8
 azure-anthropic/claude-opus-5
 azure-anthropic/claude-sonnet-5
-azure/gpt-3.5-turbo
-azure/gpt-4
-azure/gpt-4-turbo
 azure/gpt-4.1
 azure/gpt-4.1-mini
 azure/gpt-4.1-nano
@@ -178,7 +175,6 @@ azure/gpt-5.1-codex-max
 azure/gpt-5.1-codex-mini
 azure/gpt-5.2
 azure/gpt-5.2-codex
-azure/gpt-5.2-pro
 azure/gpt-5.3-codex
 azure/gpt-5.4
 azure/gpt-5.4-mini
@@ -754,6 +750,7 @@ openai-gpt-6-astra
 openai-gpt-6-astra-pro
 openai-gpt-6-luna
 openai-gpt-6-sol
+openai-gpt-61-sol
 openai-gpt-image-1
 openai-gpt-image-1.5
 openai-gpt-image-2
@@ -869,6 +866,7 @@ openai/gpt-6-sol-fast
 openai/gpt-6-sol-pro
 openai/gpt-6.1-sol
 openai/gpt-6.1-sol-fast
+openai/gpt-6.1-sol-pro
 openai/gpt-astra-latest
 openai/gpt-audio
 openai/gpt-audio-mini
