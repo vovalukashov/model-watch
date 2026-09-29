@@ -225,6 +225,8 @@ azure/gpt-6-luna
 azure/gpt-6-luna-2026-09-22
 azure/gpt-6-sol
 azure/gpt-6-sol-2026-09-22
+azure/gpt-6.1-sol
+azure/gpt-6.1-sol-2026-09-29
 azure/gpt-audio
 azure/gpt-audio-1.5
 azure/gpt-audio-1.5-2026-02-23
@@ -351,6 +353,7 @@ azure_ai/gpt-5.5-2026-04-24
 azure_ai/gpt-6-astra
 azure_ai/gpt-6-luna
 azure_ai/gpt-6-sol
+azure_ai/gpt-6.1-sol
 azure_ai/gpt-chat-latest
 azure_ai/gpt-image-2
 azure_ai/gpt-oss-120b
@@ -1312,6 +1315,10 @@ openrouter/openai/gpt-6-sol
 openrouter/openai/gpt-6-sol-pro
 openrouter/openai/gpt-6-sol-pro:batch
 openrouter/openai/gpt-6-sol:batch
+openrouter/openai/gpt-6.1-sol
+openrouter/openai/gpt-6.1-sol-pro
+openrouter/openai/gpt-6.1-sol-pro:batch
+openrouter/openai/gpt-6.1-sol:batch
 openrouter/openai/gpt-audio
 openrouter/openai/gpt-audio-mini
 openrouter/openai/gpt-chat-latest

@@ -624,6 +624,8 @@ gpt-6-luna
 gpt-6-luna@eu
 gpt-6-sol
 gpt-6-sol@eu
+gpt-6.1-sol
+gpt-6.1-sol@eu
 gpt-chat-latest
 gpt-daybreak-blue-latest
 gpt-daybreak-red-latest
@@ -865,6 +867,8 @@ openai/gpt-6-luna-pro
 openai/gpt-6-sol
 openai/gpt-6-sol-fast
 openai/gpt-6-sol-pro
+openai/gpt-6.1-sol
+openai/gpt-6.1-sol-fast
 openai/gpt-astra-latest
 openai/gpt-audio
 openai/gpt-audio-mini
