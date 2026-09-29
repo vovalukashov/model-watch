@@ -428,6 +428,8 @@ bedrock/us-west-2/anthropic.claude-v1
 bedrock/us-west-2/anthropic.claude-v2:1
 bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0
 bedrock_mantle/anthropic.claude-haiku-4-5
+bedrock_mantle/anthropic.claude-opus-5-5
+bedrock_mantle/anthropic.claude-sonnet-5-5
 bedrock_mantle/openai.gpt-5.4
 bedrock_mantle/openai.gpt-5.5
 bedrock_mantle/openai.gpt-5.6-cyber
@@ -446,6 +448,8 @@ bedrock_mantle/us-gov-east-1/openai.gpt-5.4
 bedrock_mantle/us-gov-east-1/openai.gpt-oss-120b
 bedrock_mantle/us-gov-east-1/openai.gpt-oss-20b
 bedrock_mantle/us-gov-east-1/xai.grok-4.6
+bedrock_mantle/us-gov-west-1/anthropic.claude-opus-5-5
+bedrock_mantle/us-gov-west-1/anthropic.claude-sonnet-5-5
 bedrock_mantle/us-gov-west-1/openai.gpt-5.4
 bedrock_mantle/us-gov-west-1/openai.gpt-5.6-luna
 bedrock_mantle/us-gov-west-1/openai.gpt-5.6-terra
