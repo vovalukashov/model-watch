@@ -54,7 +54,7 @@ auto-beta		1
 aw	2026-09-29T14:11Z	1
 ay	2026-09-28T14:05Z	1	2026-09-29T14:11Z
 badge		1
-be	2026-09-28T14:13Z	1
+be	2026-09-28T14:13Z	1	2026-09-29T14:21Z
 bl		1
 bn		1
 bodybuilder		1
@@ -413,7 +413,7 @@ claude-fable-5-1		1
 claude-fable-latest		1
 claude-failed-first-turn-prompt	2026-09-25T13:53Z	1
 claude-for-chrome	2026-09-25T13:53Z	1
-claude-for-chrome-cowork	2026-09-27T14:11Z	1	2026-09-28T14:13Z
+claude-for-chrome-cowork	2026-09-27T14:11Z	1
 claude-for-excel	2026-09-25T13:53Z	1
 claude-for-microsoft-365		1
 claude-for-powerpoint	2026-09-25T13:53Z	1
@@ -1368,6 +1368,7 @@ openai-gpt-image-1-5		1
 openai-gpt-image-2		1
 openai-gpt-oss-120b		1
 openai-gpt-oss-20b		1
+or	2026-09-29T14:21Z	1
 ot		1
 p5		1
 pareto-code		1
@@ -1435,6 +1436,7 @@ ue	2026-09-29T14:11Z	1
 unknown		1
 upgrade		1
 ut	2026-09-27T14:00Z	1	2026-09-28T14:05Z
+ve	2026-09-29T14:21Z	1
 veo-2-0-generate-001		1
 veo-3-1-fast-generate-001		1
 veo-3-1-fast-generate-preview		1
@@ -1444,7 +1446,7 @@ veo-3-1-lite-generate-preview		1
 viewbox		1
 vl	2026-09-27T14:00Z	1	2026-09-28T14:05Z
 void		1
-vs	2026-09-27T14:11Z	1
+vs	2026-09-27T14:11Z	1	2026-09-29T14:21Z
 vt	2026-09-28T14:05Z	1	2026-09-29T14:11Z
 wc		1
 wi		1

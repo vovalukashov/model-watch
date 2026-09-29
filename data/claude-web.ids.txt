@@ -2,7 +2,6 @@ $100
 $17
 $20
 $200
-be
 claude-3-opus
 claude-ai
 claude-ai-account
@@ -46,6 +45,7 @@ claude-email-invite-signin-link-join
 claude-error
 claude-excel
 claude-failed-first-turn-prompt
+claude-for-chrome-cowork
 claude-for-excel
 claude-for-microsoft-365
 claude-for-powerpoint
@@ -184,6 +184,7 @@ claude_web_login
 claude_web_social
 data
 max_code_point
+or
 plan
 team
-vs
+ve

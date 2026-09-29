@@ -24,7 +24,7 @@
   "Claude_Preview",
   "Claude_for_Chrome",
   "Claude_in_Chrome",
-  "be",
+  "Or",
   "claude-3-opus",
   "claude-ai",
   "claude-ai-account",
@@ -67,6 +67,7 @@
   "claude-email-invite-signin-link-join",
   "claude-excel",
   "claude-failed-first-turn-prompt",
+  "claude-for-chrome-cowork",
   "claude-for-excel",
   "claude-for-microsoft-365",
   "claude-for-powerpoint",
@@ -198,13 +199,13 @@
   "max_code_point",
   "plan",
   "team",
-  "vs"
+  "ve"
  ],
  "pages": [
   {
    "blocked": 1,
    "fetched": 59,
-   "scripts": 112,
+   "scripts": 76,
    "url": "https://claude.ai/"
   }
  ]
