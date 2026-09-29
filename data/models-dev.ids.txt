@@ -93,10 +93,6 @@ anthropic/claude-opus-4.7:thinking
 anthropic/claude-opus-4.8
 anthropic/claude-opus-4.8-fast
 anthropic/claude-opus-4.8:thinking
-anthropic/claude-opus-4:thinking
-anthropic/claude-opus-4:thinking:1024
-anthropic/claude-opus-4:thinking:32768
-anthropic/claude-opus-4:thinking:8192
 anthropic/claude-opus-5
 anthropic/claude-opus-5-5
 anthropic/claude-opus-5-fast
