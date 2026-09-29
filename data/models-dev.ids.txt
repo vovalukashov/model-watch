@@ -357,6 +357,7 @@ eu.anthropic.claude-sonnet-5
 fastgpt
 fireworks/gpt-oss-120b
 fireworks/gpt-oss-20b
+fireworks_ai/accounts/fireworks/models/gpt-oss-120b
 fireworks_ai/gpt-oss-120b
 flexai/gpt-oss-120b
 flexai/gpt-oss-20b
