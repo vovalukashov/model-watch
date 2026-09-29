@@ -998,6 +998,7 @@ gpt-4o-mini-transcribe
 gpt-4o-mini-transcribe-2025-03-20
 gpt-4o-mini-transcribe-2025-12-15
 gpt-4o-mini-tts
+gpt-4o-mini-tts-2025-03-20
 gpt-4o-mini-tts-2025-12-15
 gpt-4o-search-preview
 gpt-4o-transcribe
@@ -1197,6 +1198,7 @@ openrouter/anthropic/claude-sonnet-4.6
 openrouter/anthropic/claude-sonnet-4.6:batch
 openrouter/anthropic/claude-sonnet-5
 openrouter/anthropic/claude-sonnet-5.5
+openrouter/anthropic/claude-sonnet-5.5:batch
 openrouter/anthropic/claude-sonnet-5:batch
 openrouter/google/gemini-2.5-flash
 openrouter/google/gemini-2.5-flash-image
