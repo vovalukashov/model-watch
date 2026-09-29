@@ -289,6 +289,7 @@ claude-sonnet-4@eu
 claude-sonnet-5
 claude-sonnet-5-5
 claude-sonnet-5-5@default
+claude-sonnet-5.5
 claude-sonnet-5@default
 claude-sonnet-5@eu
 cloudflare/@cf/openai/gpt-oss-120b
