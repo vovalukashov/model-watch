@@ -53,6 +53,7 @@ anthropic.claude-opus-5-5
 anthropic.claude-sonnet-4-5-20250929-v1:0
 anthropic.claude-sonnet-4-6
 anthropic.claude-sonnet-5
+anthropic.claude-sonnet-5-5
 anthropic/claude-3-7-sonnet-20250219
 anthropic/claude-3-haiku
 anthropic/claude-3.5-haiku
