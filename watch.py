@@ -102,12 +102,6 @@ available to the owner now.
 OpenAI is preparing, not a model: promax, a tier above Pro, appeared here in September 2026.
 - feed-openai-codex, feed-anthropic-claude-code: names a regex found in recent commits of the Codex and Claude \
 Code clients. The earliest and noisiest signal; the regex also catches crate names, feature flags and branch names.
-- chatgpt-web, claude-web: model and plan names a regex found in the publicly served JavaScript of the ChatGPT \
-and Claude web apps, read through a headless browser a few times a day. Strings land in those bundles days \
-before launch — the promax plan name surfaced in chatgpt.com's code two hours before any client knew it — but \
-a match can also be an internal codename, an experiment flag or dead code. A bare lowercase word (no gpt-/claude- \
-prefix) was captured next to a planType/plans key, so it is most likely a subscription plan, not a model. A $N or \
-€N string is a price point found in the code or on the pricing page: a new one usually means a new or repriced plan.
 
 Your knowledge of which models exist ends at your training cutoff, and this bot runs later than that. Take \
 novelty only from the novel list: never call a name new or old from memory. A name listed by several catalogs \
@@ -155,176 +149,6 @@ def fetch(url: str, headers: dict[str, str]) -> bytes:
         return resp.read()
 
 
-# ---------- Apify (сайты, которые отвечают скрипту 403) ---------------------
-
-APIFY_API = "https://api.apify.com/v2"
-APIFY_ACTOR = "apify~playwright-scraper"  # headless Playwright + residential-прокси Apify
-APIFY_RUN_TIMEOUT = 240   # секунд на прогон актора; синхронный endpoint Apify всё равно обрывает на 300
-APIFY_INTERVAL = 6        # часов между прогонами одного источника, если в конфиге не сказано иначе
-
-# Выполняется в контексте актора: дожидается открытия страницы, собирает URL всех JS-бандлов,
-# скачивает их и гоняет регулярку по HTML и по каждому бандлу. __PATTERN__ подменяется на pattern
-# источника (JSON-литерал); синтаксис JS RegExp, флаг i добавляется здесь — поэтому (?i) в pattern нельзя.
-APIFY_PAGE_FUNCTION = r"""
-async function pageFunction(context) {
-    const { page, request } = context;
-    await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
-    const scriptUrls = await page.evaluate(() => {
-        const urls = new Set();
-        for (const s of document.querySelectorAll('script[src]')) urls.add(s.src);
-        for (const e of performance.getEntriesByType('resource'))
-            if (e.initiatorType === 'script' || /\.m?js(\?|$)/.test(e.name)) urls.add(e.name);
-        return [...urls];
-    });
-    const pattern = new RegExp(__PATTERN__, 'gi');
-    const found = new Set();
-    const scan = (text) => {
-        pattern.lastIndex = 0;
-        let m;
-        while ((m = pattern.exec(text)) !== null && found.size < 500) {
-            const v = m.slice(1).find(g => g !== undefined);  // первая совпавшая группа, как в extract_ids
-            found.add(v !== undefined ? v : m[0]);
-        }
-    };
-    scan(await page.content());
-    let fetched = 0, blocked = 0;
-    // every fetch is capped and a global deadline leaves headroom under the actor's run timeout:
-    // one hanging bundle must not sink the whole run (claude.ai did exactly that)
-    const deadline = Date.now() + 150000;
-    const origin = new URL(page.url()).origin;
-    // bundles load through the page itself first: the browser's TLS fingerprint, cookies and proxy
-    // make the requests look like real traffic — CDN fronting the app bundles rejects the actor's
-    // datacenter IP outright (chatgpt.com app: 60 of 60 blocked), while the page passes
-    const grabbed = await page.evaluate(async ({ urls, dl }) => {
-        const grab = async (u) => {
-            try {
-                const r = await fetch(u, { signal: AbortSignal.timeout(10000) });
-                return { u, t: r.ok ? await r.text() : null };
-            } catch (e) { return { u, t: null }; }
-        };
-        const out = [];
-        while (urls.length && Date.now() < dl) {
-            const batch = urls.splice(0, 6);
-            out.push(...await Promise.all(batch.map(grab)));
-        }
-        return out;
-    }, { urls: scriptUrls.slice(0, 60), dl: deadline }).catch(() => null);
-    const retry = [];
-    if (grabbed === null) {
-        retry.push(...scriptUrls.slice(0, 60));  // evaluate itself crashed: scan everything from the actor
-    } else {
-        blocked += scriptUrls.slice(0, 60).length - grabbed.length;  // batches cut off by the deadline
-        for (const { u, t } of grabbed) {
-            if (t !== null) { scan(t); fetched++; }
-            else if (u.startsWith(origin)) { blocked++; }  // same-origin has no CORS excuse: no retry
-            else { retry.push(u); }
-        }
-    }
-    // cross-origin failures retried from the actor: no CORS outside the browser
-    const worker = async () => {
-        while (retry.length && Date.now() < deadline) {
-            const url = retry.shift();
-            try {
-                const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-                if (!resp.ok) { blocked++; continue; }
-                scan(await resp.text());
-                fetched++;
-            } catch (e) { blocked++; }
-        }
-    };
-    await Promise.all([worker(), worker(), worker(), worker()]);
-    return { url: request.url, scripts: scriptUrls.length, fetched, blocked, matches: [...found].sort() };
-}
-"""
-
-
-def apify_state_path(src: dict) -> Path:
-    return DATA / f"{src['name']}.apify-state.json"
-
-
-def apify_due(src: dict, now: datetime) -> bool:
-    """True, если прошлый прогон актора был дольше min_interval_hours назад (или его не было)."""
-    try:
-        state = json.loads(apify_state_path(src).read_text(encoding="utf-8"))
-        last = datetime.strptime(state["last_run"], TIME_FORMAT).replace(tzinfo=timezone.utc)
-    except (OSError, ValueError, KeyError):
-        return True
-    return now - last >= timedelta(hours=src.get("min_interval_hours", APIFY_INTERVAL))
-
-
-def apify_mark_run(src: dict, now: datetime) -> None:
-    """Запоминает прогон. Пишется и после неудачи: упавший прогон тоже стоил денег, и интервал
-    ограничивает повторные попытки."""
-    apify_state_path(src).write_text(json.dumps({"last_run": now.strftime(TIME_FORMAT)}) + "\n",
-                                     encoding="utf-8")
-
-
-def apify_run(src: dict, token: str) -> bytes:
-    """Синхронно гоняет актор по странице источника и пакует найденное в JSON-снимок
-    {"matches": [...], "pages": [...]} — его разбирает extract=key_list."""
-    urls = src.get("urls") or [src["url"]]
-    input_body = {
-        "startUrls": [{"url": u} for u in urls],
-        "pageFunction": APIFY_PAGE_FUNCTION.replace("__PATTERN__", json.dumps(src["pattern"])),
-        "proxyConfiguration": {"useApifyProxy": True,
-                               "apifyProxyGroups": src.get("proxy_groups", ["RESIDENTIAL"])},
-        "maxRequestsPerCrawl": len(urls),
-        "maxConcurrency": 1,
-        # networkidle (the default) never fires on claude.ai, and 3 default retries at the 60 s
-        # page-load cap burn the whole run timeout; the page function waits for idle itself
-        "waitUntil": "domcontentloaded",
-        "maxRequestRetries": 1,
-        "useChrome": True,  # real Chrome passes anti-bot checks more often than Chromium
-        "pageLoadTimeoutSecs": 60,
-        "pageFunctionTimeoutSecs": APIFY_RUN_TIMEOUT,
-    }
-    query = urllib.parse.urlencode({"token": token, "timeout": APIFY_RUN_TIMEOUT, "memory": 2048})
-    req = urllib.request.Request(
-        f"{APIFY_API}/acts/{src.get('actor', APIFY_ACTOR)}/run-sync-get-dataset-items?{query}",
-        data=json.dumps(input_body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=APIFY_RUN_TIMEOUT + 60) as resp:
-            items = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:  # Apify пишет причину в тело ответа — без неё 400 не отладить
-        detail = e.read().decode("utf-8", errors="replace")[:300]
-        raise ValueError(f"apify HTTP {e.code}: {detail}") from e
-    pages, matches = [], set()
-    for item in items if isinstance(items, list) else []:
-        if not isinstance(item, dict):
-            continue
-        pages.append({k: item.get(k) for k in ("url", "scripts", "fetched", "blocked")})
-        matches.update(str(m) for m in item.get("matches") or [])
-    if not any(p.get("url") for p in pages):
-        raise ValueError("apify: ни одна страница не загрузилась — снимок не обновляю")
-    scripts = sum(p.get("scripts") or 0 for p in pages)
-    if scripts and not sum(p.get("fetched") or 0 for p in pages):
-        # CDN закрыл все бандлы разом: такой снимок — мусор, пусть лучше источник ошибкой отложится на интервал
-        raise ValueError(f"apify: все {scripts} бандлов заблокированы — снимок не обновляю")
-    return json.dumps({"matches": sorted(matches), "pages": pages},
-                      ensure_ascii=False, indent=1).encode("utf-8")
-
-
-def fetch_source(src: dict, headers: dict[str, str], now: datetime) -> bytes | None:
-    """Скачивает источник; None — если источник эту проверку пропускает (нет токена, интервал не вышел)."""
-    if src.get("kind") != "apify":
-        return fetch(src["url"], headers)
-    token = expand_env(src.get("token", ""))
-    if not token:
-        print(f"[{src['name']}] пропущен: не задан секрет APIFY_TOKEN")
-        return None
-    if not apify_due(src, now):
-        print(f"[{src['name']}] пропущен: прогон Apify был меньше "
-              f"{src.get('min_interval_hours', APIFY_INTERVAL)} ч назад")
-        return None
-    try:
-        raw = apify_run(src, token)
-    finally:
-        apify_mark_run(src, now)
-    return raw
-
-
 def walk_values(obj, key: str):
     """Рекурсивно собирает значения всех полей с именем key."""
     if isinstance(obj, dict):
@@ -346,13 +170,12 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     Режимы извлечения (поле "extract"):
       regex     — все совпадения "pattern" в тексте;
       key       — значения всех полей "key" (по умолчанию "id") в JSON;
-      key_list  — элементы списков в полях "key" (так apify-источники отдают найденные строки);
       top_keys  — ключи верхнего уровня JSON-объекта.
     """
     kind = src.get("kind", "json")
     mode = src.get("extract", "regex" if kind == "text" else "key")
 
-    if kind in ("json", "apify"):  # apify-источник отдаёт JSON-снимок, собранный актором
+    if kind == "json":
         parsed = json.loads(raw.decode("utf-8"))
         text = json.dumps(parsed, ensure_ascii=False, indent=1, sort_keys=True)
     else:
@@ -361,22 +184,11 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
 
     if mode == "regex":
         pattern = re.compile(src["pattern"])
-        found = []
-        for m in pattern.finditer(text):
-            group = next((g for g in m.groups() if g is not None), None)  # первая совпавшая группа
-            found.append(group if group is not None else m.group(0))
+        found = [m.group(1) if m.groups() else m.group(0) for m in pattern.finditer(text)]
     elif mode == "key":
         if parsed is None:
             raise ValueError("extract=key требует kind=json")
         found = list(walk_values(parsed, src.get("key", "id")))
-    elif mode == "key_list":
-        if parsed is None:
-            raise ValueError("extract=key_list требует kind=json")
-        found = []
-        for d in walk_dicts(parsed):
-            v = d.get(src.get("key", "id"))
-            if isinstance(v, list):
-                found += [str(x) for x in v if isinstance(x, (str, int, float))]
     elif mode == "top_keys":
         if not isinstance(parsed, dict):
             raise ValueError("extract=top_keys требует JSON-объект на верхнем уровне")
@@ -391,11 +203,6 @@ def extract_ids(raw: bytes, src: dict) -> tuple[str, list[str], object]:
     if only:
         only_re = re.compile(only)
         found = [f for f in found if only_re.search(f)]
-
-    exclude = src.get("exclude")
-    if exclude:
-        exclude_re = re.compile(exclude)
-        found = [f for f in found if not exclude_re.search(f)]
 
     ids = sorted(set(found))
     return text, ids, parsed
@@ -934,9 +741,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         try:
-            raw = fetch_source(src, headers, now)
-            if raw is None:
-                continue
+            raw = fetch(src["url"], headers)
             text, ids, parsed = extract_ids(raw, src)
         except (urllib.error.URLError, ValueError, json.JSONDecodeError, KeyError) as e:
             msg = f"[{name}] ошибка: {e}"
