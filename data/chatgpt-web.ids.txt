@@ -48,6 +48,7 @@ chatgpt-go
 chatgpt-go-intent-to-pay
 chatgpt-go-promotions-and-referrals
 chatgpt-healthcare-and-regulated-workspace-functionality
+chatgpt-in-slack-and-teams
 chatgpt-inline-map-feedback-enabled
 chatgpt-inline-selection-pill
 chatgpt-instant-answers-atc-config
@@ -199,6 +200,7 @@ gpt-5.6-terra.access
 gpt-6
 gpt-6-astra.access
 gpt-6-sol-wm
+gpt-6.1
 gpt-analytics-runs
 gpt-analytics-runs-timeseries
 gpt-builder-view
