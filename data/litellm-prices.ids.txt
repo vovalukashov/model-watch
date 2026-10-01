@@ -1356,12 +1356,14 @@ openrouter/~x-ai/grok-latest
 ovhcloud/gpt-oss-120b
 ovhcloud/gpt-oss-20b
 perplexity/anthropic/claude-fable-5
+perplexity/anthropic/claude-fable-5-1
 perplexity/anthropic/claude-haiku-4-5
 perplexity/anthropic/claude-opus-4-5
 perplexity/anthropic/claude-opus-4-6
 perplexity/anthropic/claude-opus-4-7
 perplexity/anthropic/claude-opus-4-8
 perplexity/anthropic/claude-opus-5
+perplexity/anthropic/claude-opus-5-5
 perplexity/anthropic/claude-sonnet-4-5
 perplexity/anthropic/claude-sonnet-4-6
 perplexity/anthropic/claude-sonnet-5
@@ -1376,6 +1378,7 @@ perplexity/google/gemini-3.5-flash
 perplexity/google/gemini-3.5-flash-lite
 perplexity/google/gemini-3.6-flash
 perplexity/google/gemini-3.7-flash
+perplexity/google/gemini-3.8-flash
 perplexity/openai/gpt-5
 perplexity/openai/gpt-5-mini
 perplexity/openai/gpt-5.1
@@ -1387,6 +1390,9 @@ perplexity/openai/gpt-5.5
 perplexity/openai/gpt-5.6-luna
 perplexity/openai/gpt-5.6-sol
 perplexity/openai/gpt-5.6-terra
+perplexity/openai/gpt-6-luna
+perplexity/openai/gpt-6-sol
+perplexity/openai/gpt-6.1-sol
 perplexity/xai/grok-4-1-fast-non-reasoning
 perplexity/xai/grok-4.20-multi-agent
 perplexity/xai/grok-4.20-non-reasoning
@@ -1394,6 +1400,7 @@ perplexity/xai/grok-4.20-reasoning
 perplexity/xai/grok-4.3
 perplexity/xai/grok-4.5
 perplexity/xai/grok-4.6
+perplexity/xai/grok-4.7
 replicate/anthropic/claude-3.5-haiku
 replicate/anthropic/claude-3.5-sonnet
 replicate/anthropic/claude-3.7-sonnet
