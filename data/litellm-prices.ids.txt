@@ -1599,6 +1599,7 @@ vertex_ai/xai/grok-4.20-non-reasoning
 vertex_ai/xai/grok-4.20-reasoning
 vertex_ai/xai/grok-4.3
 vertex_ai/xai/grok-4.6
+vertex_ai/xai/grok-4.7
 wandb/openai/gpt-oss-120b
 wandb/openai/gpt-oss-20b
 watsonx/openai/gpt-oss-120b
