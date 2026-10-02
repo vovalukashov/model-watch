@@ -143,12 +143,15 @@ aws-bedrock/claude-opus-4-6
 aws-bedrock/claude-opus-4-7
 aws-bedrock/claude-opus-4-8
 aws-bedrock/claude-opus-5
+aws-bedrock/claude-opus-5-5
 aws-bedrock/claude-sonnet-4-5
 aws-bedrock/claude-sonnet-4-5-20250929
 aws-bedrock/claude-sonnet-4-6
 aws-bedrock/claude-sonnet-5
+aws-bedrock/claude-sonnet-5-5
 aws-bedrock/grok-4-3
 aws-bedrock/grok-4-6
+aws-bedrock/grok-4-7
 aws-mantle/gpt-5.6-luna
 aws-mantle/gpt-5.6-sol
 aws-mantle/gpt-5.6-terra
@@ -190,6 +193,7 @@ azure/gpt-5.6-terra
 azure/gpt-6-astra
 azure/gpt-6-luna
 azure/gpt-6-sol
+azure/gpt-6.1-sol
 azure/gpt-oss-120b
 bytedance/gpt-oss-120b
 cerebras/gpt-oss-120b
