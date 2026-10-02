@@ -694,6 +694,9 @@ groq/openai/gpt-oss-120b
 groq/openai/gpt-oss-20b
 groq/openai/gpt-oss-safeguard-20b
 hf:openai/gpt-oss-120b
+in.anthropic.claude-haiku-4-5-20251001-v1:0
+in.anthropic.claude-opus-5
+in.anthropic.claude-sonnet-5
 in.openai.gpt-5.6-luna
 in.openai.gpt-5.6-terra
 infer/gpt-5.6-sol:official
