@@ -157,11 +157,14 @@ azure-ai-foundry/grok-4-1-fast-non-reasoning
 azure-ai-foundry/grok-4-1-fast-reasoning
 azure-ai-foundry/grok-4-3
 azure-anthropic/claude-fable-5
+azure-anthropic/claude-fable-5-1
 azure-anthropic/claude-opus-4-6
 azure-anthropic/claude-opus-4-7
 azure-anthropic/claude-opus-4-8
 azure-anthropic/claude-opus-5
+azure-anthropic/claude-opus-5-5
 azure-anthropic/claude-sonnet-5
+azure-anthropic/claude-sonnet-5-5
 azure/gpt-4.1
 azure/gpt-4.1-mini
 azure/gpt-4.1-nano
