@@ -647,6 +647,7 @@ gpt-oss-safeguard-120b
 gpt-oss:120b
 gpt-oss:20b
 gpt-realtime-2.1
+greenference/gpt-oss-20b
 grok-3
 grok-3-mini
 grok-4
