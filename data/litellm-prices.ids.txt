@@ -1327,6 +1327,9 @@ openrouter/openai/gpt-6.1-sol:batch
 openrouter/openai/gpt-audio
 openrouter/openai/gpt-audio-mini
 openrouter/openai/gpt-chat-latest
+openrouter/openai/gpt-image-2
+openrouter/openai/gpt-image-2.5-flare
+openrouter/openai/gpt-image-2.5-sunburst
 openrouter/openai/gpt-oss-120b
 openrouter/openai/gpt-oss-120b:batch
 openrouter/openai/gpt-oss-20b
@@ -1664,6 +1667,7 @@ xai/grok-imagine-image-quality-latest
 xai/grok-imagine-video
 xai/grok-imagine-video-1.5
 xai/grok-imagine-video-1.5-2026-05-30
+xai/grok-imagine-video-1.5-lite
 xai/grok-imagine-video-1.5-preview
 xai/grok-voice-transcribe-1.0
 xai/grok-voice-transcribe-2.0
