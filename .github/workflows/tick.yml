@@ -45,3 +45,30 @@ jobs:
           }
           dispatch tick.yml   # keep the chain alive first
           dispatch watch.yml || echo "::warning::could not start model-watch this round"
+
+  rescue:
+    # GitHub sometimes cancels a tick while it waits on the timer (an Actions incident on 2026-10-05, and
+    # with no incident on 2026-10-06), and a cancelled tick starts nothing; the hourly schedule above fired
+    # only every few hours. So a cancelled tick restarts the chain at once. A failed one does not: that is
+    # the circuit breaker. Runs cancelled while still queued have no jobs, so this never runs for them.
+    needs: tick
+    if: always() && needs.tick.result == 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restart the chain unless ticks keep failing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '-60 minutes' +%Y-%m-%dT%H:%M:%SZ)
+          failed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tick.yml --limit 20 --json conclusion,createdAt \
+            --jq "[.[] | select(.conclusion == \"failure\" and .createdAt >= \"$since\")] | length" || echo 0)
+          if [ "${failed:-0}" -ge 3 ]; then
+            echo "::error::$failed ticks failed in the last hour; not restarting the chain, the hourly schedule will try"
+            exit 1
+          fi
+          for attempt in 1 2 3; do
+            gh workflow run tick.yml --repo "$GITHUB_REPOSITORY" --ref main && exit 0
+            sleep 10
+          done
+          echo "::error::could not restart the tick chain"
+          exit 1
