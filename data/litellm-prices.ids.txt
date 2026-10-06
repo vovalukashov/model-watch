@@ -890,6 +890,7 @@ gemini/gemini-flash-lite-latest
 gemini/gemini-gemma-2-27b-it
 gemini/gemini-gemma-2-9b-it
 gemini/gemini-live-2.5-flash-preview-native-audio-09-2025
+gemini/gemini-nano-banana-2.1
 gemini/gemini-omni-1.1-flash
 gemini/gemini-omni-flash-preview
 gemini/gemini-pro-latest
