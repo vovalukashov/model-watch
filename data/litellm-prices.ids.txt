@@ -82,6 +82,7 @@ au.anthropic.claude-sonnet-4-5-20250929-v1:0
 au.anthropic.claude-sonnet-4-6
 au.anthropic.claude-sonnet-5
 au.anthropic.claude-sonnet-5-5
+azure/apac/gpt-6.1-sol
 azure/codex-mini
 azure/eu/codex-mini
 azure/eu/gpt-4.1
@@ -128,6 +129,7 @@ azure/eu/gpt-5.6-terra
 azure/eu/gpt-6-astra
 azure/eu/gpt-6-luna
 azure/eu/gpt-6-sol
+azure/eu/gpt-6.1-sol
 azure/global-standard/gpt-4o-2024-08-06
 azure/global-standard/gpt-4o-2024-11-20
 azure/global-standard/gpt-4o-mini
@@ -323,6 +325,7 @@ azure/us/gpt-5.6-terra
 azure/us/gpt-6-astra
 azure/us/gpt-6-luna
 azure/us/gpt-6-sol
+azure/us/gpt-6.1-sol
 azure/us/gpt-chat-latest
 azure_ai/FW-GPT-OSS-120B
 azure_ai/claude-fable-5
