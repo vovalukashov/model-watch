@@ -371,6 +371,7 @@ azure_ai/grok-4-fast-non-reasoning
 azure_ai/grok-4-fast-reasoning
 azure_ai/grok-4.3
 azure_ai/grok-4.6
+azure_ai/grok-4.7
 azure_ai/grok-code-fast-1
 baseten/openai/gpt-oss-120b
 bedrock/ap-northeast-1/1-month-commitment/anthropic.claude-instant-v1
