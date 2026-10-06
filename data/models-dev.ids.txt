@@ -266,6 +266,7 @@ claude-opus-5-thinking
 claude-opus-5.5
 claude-opus-5@default
 claude-opus-5@eu
+claude-opus-latest
 claude-opus4-5
 claude-opus4-6
 claude-opus4-7
@@ -649,6 +650,7 @@ gpt-oss-safeguard-120b
 gpt-oss:120b
 gpt-oss:20b
 gpt-realtime-2.1
+gpt-sol-latest
 greenference/gpt-oss-20b
 grok-3
 grok-3-mini
