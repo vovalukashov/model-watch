@@ -42,6 +42,7 @@ anthropic-claude-sonnet-5.5
 anthropic.claude-fable-5
 anthropic.claude-fable-5-1
 anthropic.claude-haiku-4-5-20251001-v1:0
+anthropic.claude-haiku-5-5
 anthropic.claude-opus-4-1-20250805-v1:0
 anthropic.claude-opus-4-5-20251101-v1:0
 anthropic.claude-opus-4-6-v1
@@ -126,6 +127,7 @@ anthropic/claude-sonnet-5:thinking
 anthropic/claude-sonnet-latest
 apac.anthropic.claude-sonnet-4-20250514-v1:0
 au.anthropic.claude-haiku-4-5-20251001-v1:0
+au.anthropic.claude-haiku-5-5
 au.anthropic.claude-opus-4-6-v1
 au.anthropic.claude-opus-4-7
 au.anthropic.claude-opus-4-8
@@ -352,6 +354,7 @@ duo-chat-gpt-6-luna
 duo-chat-gpt-6-sol
 eu.anthropic.claude-fable-5
 eu.anthropic.claude-haiku-4-5-20251001-v1:0
+eu.anthropic.claude-haiku-5-5
 eu.anthropic.claude-opus-4-5-20251101-v1:0
 eu.anthropic.claude-opus-4-6-v1
 eu.anthropic.claude-opus-4-7
@@ -464,6 +467,7 @@ gemini/gemini-3.8-flash
 global.anthropic.claude-fable-5
 global.anthropic.claude-fable-5-1
 global.anthropic.claude-haiku-4-5-20251001-v1:0
+global.anthropic.claude-haiku-5-5
 global.anthropic.claude-opus-4-5-20251101-v1:0
 global.anthropic.claude-opus-4-6-v1
 global.anthropic.claude-opus-4-7
@@ -710,6 +714,7 @@ infer/gpt-5.6-sol:official
 infer/gpt-6-astra:official
 ionos/openai/gpt-oss-120b
 jp.anthropic.claude-haiku-4-5-20251001-v1:0
+jp.anthropic.claude-haiku-5-5
 jp.anthropic.claude-opus-4-7
 jp.anthropic.claude-opus-4-8
 jp.anthropic.claude-opus-5
@@ -958,6 +963,7 @@ us-gov.openai.gpt-oss-20b-1:0
 us.anthropic.claude-fable-5
 us.anthropic.claude-fable-5-1
 us.anthropic.claude-haiku-4-5-20251001-v1:0
+us.anthropic.claude-haiku-5-5
 us.anthropic.claude-opus-4-1-20250805-v1:0
 us.anthropic.claude-opus-4-5-20251101-v1:0
 us.anthropic.claude-opus-4-6-v1
