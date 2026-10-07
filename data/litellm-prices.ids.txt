@@ -41,6 +41,7 @@ anthropic.claude-fable-5
 anthropic.claude-fable-5-1
 anthropic.claude-haiku-4-5-20251001-v1:0
 anthropic.claude-haiku-4-5@20251001
+anthropic.claude-haiku-5-5
 anthropic.claude-instant-v1
 anthropic.claude-mythos-5-1
 anthropic.claude-mythos-preview
@@ -61,6 +62,7 @@ anthropic.claude-v1
 anthropic.claude-v2:1
 apac.anthropic.claude-fable-5
 apac.anthropic.claude-haiku-4-5-20251001-v1:0
+apac.anthropic.claude-haiku-5-5
 apac.anthropic.claude-mythos-preview
 apac.anthropic.claude-opus-4-7
 apac.anthropic.claude-opus-4-8
@@ -72,6 +74,7 @@ apac.anthropic.claude-sonnet-5
 apac.anthropic.claude-sonnet-5-5
 au.anthropic.claude-fable-5
 au.anthropic.claude-haiku-4-5-20251001-v1:0
+au.anthropic.claude-haiku-5-5
 au.anthropic.claude-mythos-preview
 au.anthropic.claude-opus-4-6-v1
 au.anthropic.claude-opus-4-7
@@ -331,6 +334,7 @@ azure_ai/FW-GPT-OSS-120B
 azure_ai/claude-fable-5
 azure_ai/claude-fable-5-1
 azure_ai/claude-haiku-4-5
+azure_ai/claude-haiku-5-5
 azure_ai/claude-opus-4-5
 azure_ai/claude-opus-4-6
 azure_ai/claude-opus-4-7
@@ -404,6 +408,7 @@ bedrock/us-east-1/anthropic.claude-v1
 bedrock/us-east-1/anthropic.claude-v2:1
 bedrock/us-gov-east-1/anthropic.claude-fable-5-1
 bedrock/us-gov-east-1/anthropic.claude-haiku-4-5-20251001-v1:0
+bedrock/us-gov-east-1/anthropic.claude-haiku-5-5
 bedrock/us-gov-east-1/anthropic.claude-opus-4-8
 bedrock/us-gov-east-1/anthropic.claude-opus-5
 bedrock/us-gov-east-1/anthropic.claude-opus-5-5
@@ -415,6 +420,7 @@ bedrock/us-gov-east-1/openai.gpt-oss-120b-1:0
 bedrock/us-gov-east-1/openai.gpt-oss-20b-1:0
 bedrock/us-gov-west-1/anthropic.claude-fable-5-1
 bedrock/us-gov-west-1/anthropic.claude-haiku-4-5-20251001-v1:0
+bedrock/us-gov-west-1/anthropic.claude-haiku-5-5
 bedrock/us-gov-west-1/anthropic.claude-opus-4-8
 bedrock/us-gov-west-1/anthropic.claude-opus-5
 bedrock/us-gov-west-1/anthropic.claude-opus-5-5
@@ -435,6 +441,7 @@ bedrock/us-west-2/anthropic.claude-v1
 bedrock/us-west-2/anthropic.claude-v2:1
 bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0
 bedrock_mantle/anthropic.claude-haiku-4-5
+bedrock_mantle/anthropic.claude-haiku-5-5
 bedrock_mantle/anthropic.claude-opus-5-5
 bedrock_mantle/anthropic.claude-sonnet-5-5
 bedrock_mantle/openai.gpt-5.4
@@ -456,6 +463,7 @@ bedrock_mantle/us-gov-east-1/openai.gpt-5.4
 bedrock_mantle/us-gov-east-1/openai.gpt-oss-120b
 bedrock_mantle/us-gov-east-1/openai.gpt-oss-20b
 bedrock_mantle/us-gov-east-1/xai.grok-4.6
+bedrock_mantle/us-gov-west-1/anthropic.claude-haiku-5-5
 bedrock_mantle/us-gov-west-1/anthropic.claude-opus-5-5
 bedrock_mantle/us-gov-west-1/anthropic.claude-sonnet-5-5
 bedrock_mantle/us-gov-west-1/openai.gpt-5.4
@@ -491,6 +499,7 @@ claude-fable-5
 claude-fable-5-1
 claude-haiku-4-5
 claude-haiku-4-5-20251001
+claude-haiku-5-5
 claude-mythos-5
 claude-mythos-5-1
 claude-mythos-preview
@@ -587,6 +596,7 @@ eu.anthropic.claude-3-opus-20240229-v1:0
 eu.anthropic.claude-fable-5
 eu.anthropic.claude-fable-5-1
 eu.anthropic.claude-haiku-4-5-20251001-v1:0
+eu.anthropic.claude-haiku-5-5
 eu.anthropic.claude-opus-4-1-20250805-v1:0
 eu.anthropic.claude-opus-4-20250514-v1:0
 eu.anthropic.claude-opus-4-5-20251101-v1:0
@@ -945,6 +955,7 @@ github_copilot/gpt-5.3-codex
 global.anthropic.claude-fable-5
 global.anthropic.claude-fable-5-1
 global.anthropic.claude-haiku-4-5-20251001-v1:0
+global.anthropic.claude-haiku-5-5
 global.anthropic.claude-mythos-5-1
 global.anthropic.claude-opus-4-5-20251101-v1:0
 global.anthropic.claude-opus-4-6-v1
@@ -1118,6 +1129,7 @@ high/1536-x-1024/gpt-image-1
 high/1536-x-1024/gpt-image-1.5
 high/1536-x-1024/gpt-image-1.5-2025-12-16
 jp.anthropic.claude-haiku-4-5-20251001-v1:0
+jp.anthropic.claude-haiku-5-5
 jp.anthropic.claude-opus-4-7
 jp.anthropic.claude-opus-4-8
 jp.anthropic.claude-opus-5
@@ -1372,6 +1384,7 @@ ovhcloud/gpt-oss-20b
 perplexity/anthropic/claude-fable-5
 perplexity/anthropic/claude-fable-5-1
 perplexity/anthropic/claude-haiku-4-5
+perplexity/anthropic/claude-haiku-5-5
 perplexity/anthropic/claude-opus-4-5
 perplexity/anthropic/claude-opus-4-6
 perplexity/anthropic/claude-opus-4-7
@@ -1460,6 +1473,7 @@ tensormesh/openai/gpt-oss-20b
 together_ai/openai/gpt-oss-120b
 together_ai/openai/gpt-oss-20b
 us-gov.anthropic.claude-fable-5-1
+us-gov.anthropic.claude-haiku-5-5
 us-gov.anthropic.claude-opus-4-8
 us-gov.anthropic.claude-opus-5
 us-gov.anthropic.claude-opus-5-5
@@ -1477,6 +1491,7 @@ us.anthropic.claude-3-opus-20240229-v1:0
 us.anthropic.claude-fable-5
 us.anthropic.claude-fable-5-1
 us.anthropic.claude-haiku-4-5-20251001-v1:0
+us.anthropic.claude-haiku-5-5
 us.anthropic.claude-mythos-5
 us.anthropic.claude-mythos-5-1
 us.anthropic.claude-mythos-preview
@@ -1555,6 +1570,8 @@ vertex_ai/claude-fable-5-1@default
 vertex_ai/claude-fable-5@default
 vertex_ai/claude-haiku-4-5
 vertex_ai/claude-haiku-4-5@20251001
+vertex_ai/claude-haiku-5-5
+vertex_ai/claude-haiku-5-5@default
 vertex_ai/claude-opus-4-5
 vertex_ai/claude-opus-4-5@20251101
 vertex_ai/claude-opus-4-6
