@@ -141,6 +141,7 @@ aws-bedrock/claude-fable-5
 aws-bedrock/claude-fable-5-1
 aws-bedrock/claude-haiku-4-5
 aws-bedrock/claude-haiku-4-5-20251001
+aws-bedrock/claude-haiku-5-5
 aws-bedrock/claude-opus-4-1-20250805
 aws-bedrock/claude-opus-4-5-20251101
 aws-bedrock/claude-opus-4-6
